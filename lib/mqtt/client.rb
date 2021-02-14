@@ -163,10 +163,10 @@ module MQTT
       @last_ping_response = Time.now
       @socket = nil
       @read_queue = Queue.new
-      @pubacks = {}
+      @acks = {}
       @read_thread = nil
       @write_semaphore = Mutex.new
-      @pubacks_semaphore = Mutex.new
+      @acks_semaphore = Mutex.new
     end
 
     # Get the OpenSSL context, that is used if SSL/TLS is enabled
@@ -320,33 +320,14 @@ module MQTT
         :payload => payload
       )
 
+      queue = register_for_ack(packet.id)  unless qos.zero?
+
       # Send the packet
-      res = send_packet(packet)
+      send_packet(packet)
 
       return if qos.zero?
 
-      queue = Queue.new
-
-      wait_for_puback packet.id, queue
-
-      deadline = current_time + @ack_timeout
-
-      loop do
-        response = queue.pop
-        case response
-        when :read_timeout
-          return -1 if current_time > deadline
-        when :close
-          return -1
-        else
-          @pubacks_semaphore.synchronize do
-            @pubacks.delete packet.id
-          end
-          break
-        end
-      end
-
-      res
+      wait_for_ack(packet.id, queue)
     end
 
     # Send a subscribe message for one or more topics on the MQTT server.
@@ -361,12 +342,14 @@ module MQTT
     #   client.subscribe( ['a/b',0], ['c/d',1] )
     #   client.subscribe( 'a/b' => 0, 'c/d' => 1 )
     #
-    def subscribe(*topics)
+    def subscribe(*topics, wait_for_ack: false)
       packet = MQTT::Packet::Subscribe.new(
         :id => next_packet_id,
         :topics => topics
       )
+      queue = register_for_ack(packet.id) if wait_for_ack
       send_packet(packet)
+      wait_for_ack(packet.id, queue) if wait_for_ack
     end
 
     # Return the next message received from the MQTT server.
@@ -442,14 +425,16 @@ module MQTT
     end
 
     # Send a unsubscribe message for one or more topics on the MQTT server
-    def unsubscribe(*topics)
+    def unsubscribe(*topics, wait_for_ack: false)
       topics = topics.first if topics.is_a?(Enumerable) && topics.count == 1
 
       packet = MQTT::Packet::Unsubscribe.new(
         :topics => topics,
         :id => next_packet_id
       )
+      queue = register_for_ack(packet.id) if wait_for_ack
       send_packet(packet)
+      wait_for_ack(packet.id, queue) if wait_for_ack
     end
 
     private
@@ -476,21 +461,46 @@ module MQTT
       Thread.current[:parent].raise(exp)
     end
 
-    def wait_for_puback(id, queue)
-      @pubacks_semaphore.synchronize do
-        @pubacks[id] = queue
+    def register_for_ack(id)
+      queue = Queue.new
+
+      @acks_semaphore.synchronize do
+        @acks[id] = queue
+      end
+      queue
+    end
+
+    def wait_for_ack(id, queue)
+      deadline = current_time + @ack_timeout
+
+      loop do
+        response = queue.pop
+        case response
+        when :read_timeout
+          return -1 if current_time > deadline
+        when :close
+          return -1
+        else
+          @acks_semaphore.synchronize do
+            @acks.delete id
+          end
+          break
+        end
       end
     end
 
     def handle_packet(packet)
-      if packet.class == MQTT::Packet::Publish
+      case packet
+      when MQTT::Packet::Publish
         # Add to queue
         @read_queue.push(packet)
-      elsif packet.class == MQTT::Packet::Pingresp
+      when MQTT::Packet::Pingresp
         @last_ping_response = Time.now
-      elsif packet.class == MQTT::Packet::Puback
-        @pubacks_semaphore.synchronize do
-          @pubacks[packet.id] << packet
+      when MQTT::Packet::Puback,
+        MQTT::Packet::Suback,
+        MQTT::Packet::Unsuback
+        @acks_semaphore.synchronize do
+          @acks[packet.id] << packet if @acks[packet.id]
         end
       end
       # Ignore all other packets
@@ -498,14 +508,14 @@ module MQTT
     end
 
     def handle_timeouts
-      @pubacks_semaphore.synchronize do
-        @pubacks.each_value { |q| q << :read_timeout }
+      @acks_semaphore.synchronize do
+        @acks.each_value { |q| q << :read_timeout }
       end
     end
 
     def handle_close
-      @pubacks_semaphore.synchronize do
-        @pubacks.each_value { |q| q << :close }
+      @acks_semaphore.synchronize do
+        @acks.each_value { |q| q << :close }
       end
     end
 

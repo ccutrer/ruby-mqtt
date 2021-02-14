@@ -581,11 +581,14 @@ describe MQTT::Client do
         @injected_pubacks[packet.id] = packet
       end
 
-      def wait_for_puback(id, queue)
-        packet = @injected_pubacks.fetch(id) {
-          return super
-        }
-        queue << packet
+      def register_for_ack(id)
+        if @injected_pubacks.key?(id)
+          queue = Queue.new
+          queue << @injected_pubacks[id]
+          return queue
+        end
+
+        super
       end
     end
 
