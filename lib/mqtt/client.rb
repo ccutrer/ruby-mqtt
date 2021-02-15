@@ -307,27 +307,65 @@ module MQTT
       !@socket.nil? && !@socket.closed?
     end
 
+    def batch_publish
+      return yield if @batch_publish
+
+      @batch_publish = {}
+
+      begin
+        yield
+
+        batch = @batch_publish
+        @batch_publish = nil
+        batch.each do |(kwargs, values)|
+          publish(values, **kwargs)
+        end
+      ensure
+        @batch_publish = nil
+      end
+    end
+
     # Publish a message on a particular topic to the MQTT server.
-    def publish(topic, payload = '', retain = false, qos = 0)
-      raise ArgumentError, 'Topic name cannot be nil' if topic.nil?
-      raise ArgumentError, 'Topic name cannot be empty' if topic.empty?
+    def publish(topics, payload = nil, retain: false, qos: 0)
+      raise ArgumentError, 'Payload cannot be passed if passing a hash for topics and payloads' if topics.is_a?(Hash) && !payload.nil?
 
-      packet = MQTT::Packet::Publish.new(
-        :id => next_packet_id,
-        :qos => qos,
-        :retain => retain,
-        :topic => topic,
-        :payload => payload
-      )
+      if @batch_publish && qos != 0
+        values = @batch_publish[{ retain: retain, qos: qos }] ||= {}
+        if topics.is_a?(Hash)
+          values.merge!(topics)
+        else
+          values[topics] = payload
+        end
+        return
+      end
 
-      queue = register_for_ack(packet.id)  unless qos.zero?
+      queues = {}
 
-      # Send the packet
-      send_packet(packet)
+      topics = { topics => payload } unless topics.is_a?(Hash)
+
+      topics.each do |(topic, payload)|
+        raise ArgumentError, 'Topic name cannot be nil' if topic.nil?
+        raise ArgumentError, 'Topic name cannot be empty' if topic.empty?
+
+        packet = MQTT::Packet::Publish.new(
+          :id => next_packet_id,
+          :qos => qos,
+          :retain => retain,
+          :topic => topic,
+          :payload => payload
+        )
+
+        queues[packet.id] = register_for_ack(packet.id)  unless qos.zero?
+
+        # Send the packet
+        send_packet(packet)
+      end
 
       return if qos.zero?
 
-      wait_for_ack(packet.id, queue)
+      queues.each do |(id, queue)|
+        wait_for_ack(id, queue)
+      end
     end
 
     # Send a subscribe message for one or more topics on the MQTT server.

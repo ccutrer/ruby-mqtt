@@ -610,7 +610,7 @@ describe MQTT::Client do
         end
       }
       start = now
-      expect(client.publish('topic','payload', false, 1)).to eq(-1)
+      expect(client.publish('topic','payload', qos: 1)).to eq(-1)
       elapsed = now - start
       t.kill
       expect(elapsed).to be_within(0.1).of(1.0)
@@ -628,37 +628,37 @@ describe MQTT::Client do
     end
 
     it "should write a valid PUBLISH packet to the socket without the retain flag" do
-      client.publish('topic','payload', false, 0)
+      client.publish('topic','payload')
       expect(socket.string).to eq("\x30\x0e\x00\x05topicpayload")
     end
 
     it "should write a valid PUBLISH packet to the socket with the retain flag set" do
-      client.publish('topic','payload', true, 0)
+      client.publish('topic','payload', reatin: true)
       expect(socket.string).to eq("\x31\x0e\x00\x05topicpayload")
     end
 
     it "should write a valid PUBLISH packet to the socket with the QoS set to 1" do
       inject_puback(1)
-      client.publish('topic','payload', false, 1)
+      client.publish('topic','payload', qos: 1)
       expect(socket.string).to eq("\x32\x10\x00\x05topic\x00\x01payload")
     end
 
     it "should wrap the packet id after 65535" do
       0xffff.times do |n|
         inject_puback(n + 1)
-        client.publish('topic','payload', false, 1)
+        client.publish('topic','payload', qos: 1)
       end
       expect(client.instance_variable_get(:@last_packet_id)).to eq(0xffff)
 
       socket.string = ""
       inject_puback(1)
-      client.publish('topic','payload', false, 1)
+      client.publish('topic','payload', qos: 1)
       expect(socket.string).to eq("\x32\x10\x00\x05topic\x00\x01payload")
     end
 
     it "should write a valid PUBLISH packet to the socket with the QoS set to 2" do
       inject_puback(1)
-      client.publish('topic','payload', false, 2)
+      client.publish('topic','payload', qos: 2)
       expect(socket.string).to eq("\x34\x10\x00\x05topic\x00\x01payload")
     end
 
@@ -668,7 +668,7 @@ describe MQTT::Client do
     end
 
     it "should write a valid PUBLISH packet with frozen payload" do
-      client.publish('topic', 'payload'.freeze, false, 0)
+      client.publish('topic', 'payload'.freeze)
       expect(socket.string).to eq("\x30\x0e\x00\x05topicpayload")
     end
 

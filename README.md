@@ -113,7 +113,7 @@ For more information, see and list of attributes for the [MQTT::Client] class an
 To send a message to a topic, use the ```publish``` method:
 
 ~~~ ruby
-client.publish(topic, payload, retain=false)
+client.publish(topic, payload, retain: false, qos: 0)
 ~~~
 
 The method will return once the message has been sent to the MQTT server.
