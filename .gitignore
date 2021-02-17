@@ -1,8 +1,7 @@
-.bundle
-.ruby-version
-.ruby-gemset
-.yardoc
-*.gem
-coverage
-doc
-Gemfile.lock
+/.bundle/
+/.byebug_history
+/.ruby-version
+/.yardoc
+/pkg/*.gem
+/coverage
+/doc
