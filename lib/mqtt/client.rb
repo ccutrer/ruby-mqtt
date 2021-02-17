@@ -1,4 +1,5 @@
 autoload :OpenSSL, 'openssl'
+autoload :SecureRandom, 'securerandom'
 autoload :URI, 'uri'
 
 # Client class for talking to an MQTT server
@@ -96,14 +97,7 @@ module MQTT
     # Generate a random client identifier
     # (using the characters 0-9 and a-z)
     def self.generate_client_id(prefix = 'ruby', length = 16)
-      str = prefix.dup
-      length.times do
-        num = rand(36)
-        # Adjust based on number or letter.
-        num += num < 10 ? 48 : 87
-        str += num.chr
-      end
-      str
+      "#{prefix}#{SecureRandom.alphanumeric(length).downcase}"
     end
 
     # Create a new MQTT Client instance
