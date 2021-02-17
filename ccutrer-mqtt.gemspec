@@ -1,7 +1,4 @@
-#!/usr/bin/env ruby -rubygems
-# -*- encoding: utf-8 -*-
-$:.push File.expand_path("../lib", __FILE__)
-require "mqtt/version"
+require_relative 'lib/mqtt/version'
 
 Gem::Specification.new do |gem|
   gem.name        = 'ccutrer-mqtt'
@@ -15,18 +12,18 @@ Gem::Specification.new do |gem|
 
   gem.rubyforge_project = 'mqtt'
 
-  gem.files         = %w(README.md LICENSE.md NEWS.md) + Dir.glob('lib/**/*.rb')
+  gem.files         = %w[README.md LICENSE.md NEWS.md] + Dir.glob('lib/**/*.rb')
   gem.test_files    = Dir.glob('spec/*_spec.rb')
-  gem.executables   = %w()
-  gem.require_paths = %w(lib)
+  gem.executables   = %w[]
+  gem.require_paths = %w[lib]
 
   gem.required_ruby_version = '>= 2.0.0'
 
-  gem.add_development_dependency 'bundler',  '>= 1.11.2'
-  gem.add_development_dependency 'rake',     '>= 10.2.2'
-  gem.add_development_dependency 'yard',     '>= 0.9.11'
-  gem.add_development_dependency 'rspec',    '>= 3.5.0'
-  gem.add_development_dependency 'simplecov','>= 0.9.2'
-  gem.add_development_dependency 'rubocop',  '~> 0.48.0'
-  gem.add_development_dependency 'byebug', '~> 11.1'
+  gem.add_development_dependency 'bundler',   '>= 1.11.2'
+  gem.add_development_dependency 'rake',      '>= 10.2.2'
+  gem.add_development_dependency 'yard',      '>= 0.9.11'
+  gem.add_development_dependency 'rspec',     '>= 3.5.0'
+  gem.add_development_dependency 'simplecov', '>= 0.9.2'
+  gem.add_development_dependency 'rubocop',   '~> 0.48.0'
+  gem.add_development_dependency 'byebug',    '~> 11.1'
 end

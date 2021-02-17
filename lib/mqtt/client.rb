@@ -337,7 +337,7 @@ module MQTT
 
       topics = { topics => payload } unless topics.is_a?(Hash)
 
-      topics.each do |(topic, payload)|
+      topics.each do |(topic, topic_payload)|
         raise ArgumentError, 'Topic name cannot be nil' if topic.nil?
         raise ArgumentError, 'Topic name cannot be empty' if topic.empty?
 
@@ -346,10 +346,10 @@ module MQTT
           :qos => qos,
           :retain => retain,
           :topic => topic,
-          :payload => payload
+          :payload => topic_payload
         )
 
-        queues[packet.id] = register_for_ack(packet.id)  unless qos.zero?
+        queues[packet.id] = register_for_ack(packet.id) unless qos.zero?
 
         # Send the packet
         send_packet(packet)
