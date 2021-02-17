@@ -24,13 +24,10 @@ describe "a client talking to a server" do
   end
 
   context "connecting and publishing a packet" do
-    def connect_and_publish(options = {})
+    def connect_and_publish(**kwargs)
       @client.connect
 
-      retain = options.fetch(:retain) { false }
-      qos = options.fetch(:qos) { 0 }
-
-      @client.publish('test', 'foobar', retain, qos)
+      @client.publish('test', 'foobar', **kwargs)
       @client.disconnect
       @server.thread.join(1)
     end
@@ -57,7 +54,7 @@ describe "a client talking to a server" do
 
     context "with qos > 0" do
       it "the server should have received a packet without timeout" do
-        connect_and_publish(:qos => 1)
+        connect_and_publish(qos: 1)
         expect(@server.last_publish).not_to be_nil
       end
     end

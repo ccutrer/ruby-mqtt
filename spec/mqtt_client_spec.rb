@@ -610,7 +610,7 @@ describe MQTT::Client do
         end
       }
       start = now
-      expect(client.publish('topic','payload', qos: 1)).to eq(-1)
+      client.publish('topic','payload', qos: 1)
       elapsed = now - start
       t.kill
       expect(elapsed).to be_within(0.1).of(1.0)
@@ -633,7 +633,7 @@ describe MQTT::Client do
     end
 
     it "should write a valid PUBLISH packet to the socket with the retain flag set" do
-      client.publish('topic','payload', reatin: true)
+      client.publish('topic','payload', retain: true)
       expect(socket.string).to eq("\x31\x0e\x00\x05topicpayload")
     end
 
@@ -695,9 +695,9 @@ describe MQTT::Client do
       inject_puback(2)
 
       expect(client).to receive(:send_packet) { |packet| expect(packet.id).to eq(1) }
-      client.publish "topic", "message", false, 1
+      client.publish "topic", "message", qos: 1
       expect(client).to receive(:send_packet) { |packet| expect(packet.id).to eq(2) }
-      client.publish "topic", "message", false, 1
+      client.publish "topic", "message", qos: 1
     end
   end
 
