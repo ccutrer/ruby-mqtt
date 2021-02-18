@@ -20,7 +20,7 @@ module MQTT
     # Allowed values include:
     #
     # @example Using TLS 1.0
-    #    client = Client.new('mqtt.example.com', :ssl => :TLSv1)
+    #    client = Client.new('mqtt.example.com', ssl: :TLSv1)
     # @see OpenSSL::SSL::SSLContext::METHODS
     attr_accessor :ssl
 
@@ -35,6 +35,19 @@ module MQTT
 
     # Number of seconds to wait for acknowledgement packets (default is 5 seconds)
     attr_accessor :ack_timeout
+
+    # How many times to attempt re-sending packets that weren't acknowledged
+    # (default is 5) before giving up
+    attr_accessor :resend_limit
+
+    # How many attempts to re-establish a connection after it drops before
+    # giving up (default 5)
+    attr_accessor :reconnect_limit
+
+    # How long to wait between re-connection attempts (exponential - i.e.
+    # immediately after first drop, then 5s, then 25s, then 125s, etc.
+    # when theis value defaults to 5)
+    attr_accessor :reconnect_backoff
 
     # Username to authenticate to the server with
     attr_accessor :username
@@ -57,25 +70,25 @@ module MQTT
     # Last ping response time
     attr_reader :last_ping_response
 
-    # Timeout between select polls (in seconds)
-    SELECT_TIMEOUT = 0.5
-
     # Default attribute values
     ATTR_DEFAULTS = {
-      :host => nil,
-      :port => nil,
-      :version => '3.1.1',
-      :keep_alive => 15,
-      :clean_session => true,
-      :client_id => nil,
-      :ack_timeout => 5,
-      :username => nil,
-      :password => nil,
-      :will_topic => nil,
-      :will_payload => nil,
-      :will_qos => 0,
-      :will_retain => false,
-      :ssl => false
+      host: nil,
+      port: nil,
+      version: '3.1.0',
+      keep_alive: 15,
+      clean_session: true,
+      client_id: nil,
+      ack_timeout: 5,
+      resend_limit: 5,
+      reconnect_limit: 5,
+      reconnect_backoff: 5,
+      username: nil,
+      password: nil,
+      will_topic: nil,
+      will_payload: nil,
+      will_qos: 0,
+      will_retain: false,
+      ssl: false
     }
 
     # Create and connect a new MQTT Client
@@ -116,8 +129,8 @@ module MQTT
     #  client = MQTT::Client.new('mqtt://user:pass@myserver.example.com')
     #  client = MQTT::Client.new('myserver.example.com')
     #  client = MQTT::Client.new('myserver.example.com', 18830)
-    #  client = MQTT::Client.new(:host => 'myserver.example.com')
-    #  client = MQTT::Client.new(:host => 'myserver.example.com', :keep_alive => 30)
+    #  client = MQTT::Client.new(host: 'myserver.example.com')
+    #  client = MQTT::Client.new(host: 'myserver.example.com', keep_alive: 30)
     #
     def initialize(*args)
       attributes = args.last.is_a?(Hash) ? args.pop : {}
@@ -153,14 +166,20 @@ module MQTT
       end
 
       # Initialise private instance variables
-      @last_ping_request = Time.now
-      @last_ping_response = Time.now
       @socket = nil
       @read_queue = Queue.new
-      @acks = {}
+      @write_queue = Queue.new
+
       @read_thread = nil
-      @write_semaphore = Mutex.new
-      @acks_semaphore = Mutex.new
+      @write_thread = nil
+
+      @acks = {}
+
+      @connection_mutex = Mutex.new
+      @acks_mutex = Mutex.new
+      @wake_up_pipe = IO.pipe
+
+      @connected = false
     end
 
     # Get the OpenSSL context, that is used if SSL/TLS is enabled
@@ -200,7 +219,7 @@ module MQTT
     #
     # The will is a message that will be delivered by the server when the client dies.
     # The Will must be set before establishing a connection to the server
-    def set_will(topic, payload, retain = false, qos = 0)
+    def set_will(topic, payload, retain: false, qos: 0)
       self.will_topic = topic
       self.will_payload = payload
       self.will_retain = retain
@@ -208,9 +227,13 @@ module MQTT
     end
 
     # Connect to the MQTT server
+    #
     # If a block is given, then yield to that block and then disconnect again.
-    def connect(clientid = nil)
-      @client_id = clientid unless clientid.nil?
+    def connect
+      if @connected
+        yield(self) if block_given?
+        return
+      end
 
       if @client_id.nil? || @client_id.empty?
         raise 'Must provide a client_id if clean_session is set to false' unless @clean_session
@@ -219,53 +242,9 @@ module MQTT
         @client_id = MQTT::Client.generate_client_id if @version == '3.1.0'
       end
 
-      raise 'No MQTT server host set when attempting to connect' if @host.nil?
+      raise ArgumentError, 'No MQTT server host set when attempting to connect' if @host.nil?
 
-      unless connected?
-        # Create network socket
-        tcp_socket = TCPSocket.new(@host, @port)
-
-        if @ssl
-          # Set the protocol version
-          ssl_context.ssl_version = @ssl if @ssl.is_a?(Symbol)
-
-          @socket = OpenSSL::SSL::SSLSocket.new(tcp_socket, ssl_context)
-          @socket.sync_close = true
-
-          # Set hostname on secure socket for Server Name Indication (SNI)
-          @socket.hostname = @host if @socket.respond_to?(:hostname=)
-
-          @socket.connect
-        else
-          @socket = tcp_socket
-        end
-
-        # Construct a connect packet
-        packet = MQTT::Packet::Connect.new(
-          :version => @version,
-          :clean_session => @clean_session,
-          :keep_alive => @keep_alive,
-          :client_id => @client_id,
-          :username => @username,
-          :password => @password,
-          :will_topic => @will_topic,
-          :will_payload => @will_payload,
-          :will_qos => @will_qos,
-          :will_retain => @will_retain
-        )
-
-        # Send packet
-        send_packet(packet)
-
-        # Receive response
-        receive_connack
-
-        # Start packet reading thread
-        @read_thread = Thread.new(Thread.current) do |parent|
-          Thread.current[:parent] = parent
-          receive_packet while connected?
-        end
-      end
+      connect_internal
 
       return unless block_given?
 
@@ -278,29 +257,63 @@ module MQTT
     end
 
     # Disconnect from the MQTT server.
+    #
     # If you don't want to say goodbye to the server, set send_msg to false.
     def disconnect(send_msg = true)
+      @read_queue << [ConnectionClosedException.new, current_time]
       # Stop reading packets from the socket first
-      @read_thread.kill if @read_thread && @read_thread.alive?
-      @read_thread = nil
+      @connection_mutex.synchronize do
+        if @write_thread&.alive?
+          @write_thread.kill
+          @write_thread.join
+        end
+        @read_thread.kill if @read_thread&.alive?
+        @read_thread = @write_thread = nil
 
-      return unless connected?
+        @connected = false
+      end
+      @acks_mutex.synchronize do
+        @acks.each_value do |pending_ack|
+          pending_ack.queue << :close
+        end
+        @acks.clear
+      end
 
-      # Close the socket if it is open
+      return unless @socket
+
       if send_msg
         packet = MQTT::Packet::Disconnect.new
-        send_packet(packet)
+        @socket.write(packet.to_s)
       end
-      @socket.close unless @socket.nil?
-      handle_close
+      @socket.close
       @socket = nil
     end
 
     # Checks whether the client is connected to the server.
+    #
+    # Note that this returns true even if the connection is down and we're
+    # trying to reconnect
     def connected?
-      !@socket.nil? && !@socket.closed?
+      @connected
     end
 
+    # registers a callback to be called when a connection is re-established
+    #
+    # can be used to re-subscribe (if you're not using persistent sessions)
+    # to topics, and/or re-publish aliveness (if you set a Will)
+    def on_reconnect(&block)
+      @on_reconnect = block
+    end
+
+    # yields a block, and after the block returns all messages are
+    # published at once, waiting for any necessary PubAcks for QoS 1
+    # packets as a batch at the end
+    #
+    #  For example:
+    #    client.batch_publish do
+    #      client.publish("topic1", "value1", qos: 1)
+    #      client.publish("topic2", "value2", qos: 1)
+    #    end
     def batch_publish
       return yield if @batch_publish
 
@@ -322,6 +335,7 @@ module MQTT
     # Publish a message on a particular topic to the MQTT server.
     def publish(topics, payload = nil, retain: false, qos: 0)
       raise ArgumentError, 'Payload cannot be passed if passing a hash for topics and payloads' if topics.is_a?(Hash) && !payload.nil?
+      raise NotConnectedException unless connected?
 
       if @batch_publish && qos != 0
         values = @batch_publish[{ retain: retain, qos: qos }] ||= {}
@@ -333,7 +347,7 @@ module MQTT
         return
       end
 
-      queues = {}
+      pending_acks = []
 
       topics = { topics => payload } unless topics.is_a?(Hash)
 
@@ -342,14 +356,14 @@ module MQTT
         raise ArgumentError, 'Topic name cannot be empty' if topic.empty?
 
         packet = MQTT::Packet::Publish.new(
-          :id => next_packet_id,
-          :qos => qos,
-          :retain => retain,
-          :topic => topic,
-          :payload => topic_payload
+          id: next_packet_id,
+          qos: qos,
+          retain: retain,
+          topic: topic,
+          payload: topic_payload
         )
 
-        queues[packet.id] = register_for_ack(packet.id) unless qos.zero?
+        pending_acks << register_for_ack(packet) unless qos.zero?
 
         # Send the packet
         send_packet(packet)
@@ -357,9 +371,10 @@ module MQTT
 
       return if qos.zero?
 
-      queues.each do |(id, queue)|
-        wait_for_ack(id, queue)
+      pending_acks.each do |ack|
+        wait_for_ack(ack)
       end
+      nil
     end
 
     # Send a subscribe message for one or more topics on the MQTT server.
@@ -375,69 +390,62 @@ module MQTT
     #   client.subscribe( 'a/b' => 0, 'c/d' => 1 )
     #
     def subscribe(*topics, wait_for_ack: false)
+      raise NotConnectedException unless connected?
+
       packet = MQTT::Packet::Subscribe.new(
-        :id => next_packet_id,
-        :topics => topics
+        id: next_packet_id,
+        topics: topics
       )
-      queue = register_for_ack(packet.id) if wait_for_ack
+      token = register_for_ack(packet) if wait_for_ack
       send_packet(packet)
-      wait_for_ack(packet.id, queue) if wait_for_ack
+      wait_for_ack(token) if wait_for_ack
+    end
+
+    # Send a unsubscribe message for one or more topics on the MQTT server
+    def unsubscribe(*topics, wait_for_ack: false)
+      raise NotConnectedException unless connected?
+
+      topics = topics.first if topics.is_a?(Enumerable) && topics.count == 1
+
+      packet = MQTT::Packet::Unsubscribe.new(
+        topics: topics,
+        id: next_packet_id
+      )
+      token = register_for_ack(packet) if wait_for_ack
+      send_packet(packet)
+      wait_for_ack(token) if wait_for_ack
     end
 
     # Return the next message received from the MQTT server.
-    # An optional topic can be given to subscribe to.
     #
     # The method either returns the topic and message as an array:
     #   topic,message = client.get
     #
     # Or can be used with a block to keep processing messages:
-    #   client.get('test') do |topic,payload|
+    #   client.get do |topic,payload|
     #     # Do stuff here
     #   end
     #
-    def get(topic = nil, options = {})
-      if block_given?
-        get_packet(topic) do |packet|
-          yield(packet.topic, packet.payload) unless packet.retain && options[:omit_retained]
-        end
-      else
-        loop do
-          # Wait for one packet to be available
-          packet = get_packet(topic)
-          return packet.topic, packet.payload unless packet.retain && options[:omit_retained]
-        end
-      end
-    end
-
-    # Return the next packet object received from the MQTT server.
-    # An optional topic can be given to subscribe to.
-    #
-    # The method either returns a single packet:
-    #   packet = client.get_packet
-    #   puts packet.topic
-    #
-    # Or can be used with a block to keep processing messages:
-    #   client.get_packet('test') do |packet|
-    #     # Do stuff here
-    #     puts packet.topic
-    #   end
-    #
-    def get_packet(topic = nil)
-      # Subscribe to a topic, if an argument is given
-      subscribe(topic) unless topic.nil?
-
-      if block_given?
-        # Loop forever!
-        loop do
-          packet = @read_queue.pop
-          yield(packet)
-          puback_packet(packet) if packet.qos > 0
-        end
-      else
-        # Wait for one packet to be available
+    def get
+      raise NotConnectedException unless connected?
+      
+      loop_start = current_time
+      loop do
         packet = @read_queue.pop
+        if packet.is_a?(Array) && packet.last >= loop_start
+          e = packet.first
+          e.set_backtrace(e.backtrace + ["<from MQTT worker thread>"] + caller)
+          raise e
+        end
+        next unless packet.is_a?(Packet)
+
+        unless block_given?
+          puback_packet(packet) if packet.qos > 0
+          return packet.topic, packet.payload
+        end
+
+        yield(packet.topic, packet.payload)
         puback_packet(packet) if packet.qos > 0
-        return packet
       end
     end
 
@@ -456,83 +464,176 @@ module MQTT
       @read_queue.clear
     end
 
-    # Send a unsubscribe message for one or more topics on the MQTT server
-    def unsubscribe(*topics, wait_for_ack: false)
-      topics = topics.first if topics.is_a?(Enumerable) && topics.count == 1
+    private
 
-      packet = MQTT::Packet::Unsubscribe.new(
-        :topics => topics,
-        :id => next_packet_id
+    PendingAck = Struct.new(:packet, :queue, :timeout_at, :send_count)
+
+    def connect_internal
+      # Create network socket
+      tcp_socket = TCPSocket.new(@host, @port)
+
+      if @ssl
+        # Set the protocol version
+        ssl_context.ssl_version = @ssl if @ssl.is_a?(Symbol)
+
+        @socket = OpenSSL::SSL::SSLSocket.new(tcp_socket, ssl_context)
+        @socket.sync_close = true
+
+        # Set hostname on secure socket for Server Name Indication (SNI)
+        @socket.hostname = @host if @socket.respond_to?(:hostname=)
+
+        @socket.connect
+      else
+        @socket = tcp_socket
+      end
+
+      # Construct a connect packet
+      packet = MQTT::Packet::Connect.new(
+        version: @version,
+        clean_session: @clean_session,
+        keep_alive: @keep_alive,
+        client_id: @client_id,
+        username: @username,
+        password: @password,
+        will_topic: @will_topic,
+        will_payload: @will_payload,
+        will_qos: @will_qos,
+        will_retain: @will_retain
       )
-      queue = register_for_ack(packet.id) if wait_for_ack
-      send_packet(packet)
-      wait_for_ack(packet.id, queue) if wait_for_ack
+
+      # Send packet
+      @socket.write(packet.to_s)
+
+      # Receive response
+      receive_connack
+
+      @connected = true
+
+      @write_thread = Thread.new do
+        while (packet = @write_queue.pop)
+          @socket.write(packet.to_s)
+        end
+      rescue => e
+        @write_queue << packet if packet
+        reconnect(e)
+      end
+
+      @read_thread = Thread.new do
+        loop do
+          receive_packet
+        end
+      rescue => e
+        reconnect(e)
+      end
     end
 
-    private
+    def reconnect(exception)
+      @connection_mutex.synchronize do
+        @socket&.close
+        @socket = nil
+        @read_thread&.kill if Thread.current != @read_thread
+        @write_thread&.kill if Thread.current != @write_thread
+        @read_thread = @write_thread = nil
+
+        retries = 0
+        begin
+          connect_internal unless @reconnect_limit == 0
+        rescue
+          @socket&.close
+          @socket = nil
+
+          if (retries += 1) > @reconnect_limit
+            sleep @reconnect_backoff ** retries
+            retry
+          end
+        end
+
+        unless @socket
+          # couldn't reconnect
+          @acks_mutex.synchronize do
+            @acks.each_value do |pending_ack|
+              pending_ack.queue << :close
+            end
+            @acks.clear
+          end
+          @connected = false
+          @read_queue << [exception, current_time]
+          return
+        end
+      end
+
+      begin
+        @on_reconnect&.call
+      rescue => e
+        @read_queue << [e, current_time]
+        disconnect
+      end
+    end
 
     # Try to read a packet from the server
     # Also sends keep-alive ping packets.
     def receive_packet
       # Poll socket - is there data waiting?
-      result = IO.select([@socket], [], [], SELECT_TIMEOUT)
+      timeout = next_timeout
+      read_ready, _ = IO.select([@socket, @wake_up_pipe[0]], [], [], timeout)
+
+      # we just needed to break out of our select to set up a new timeout;
+      # we can discard the actual contents
+      if read_ready&.include?(@wake_up_pipe[0])
+        @wake_up_pipe[0].readpartial(4096)
+      end
+
       handle_timeouts
-      unless result.nil?
-        # Yes - read in the packet
+
+      if read_ready&.include?(@socket)
         packet = MQTT::Packet.read(@socket)
-        handle_packet packet
+        handle_packet(packet)
       end
-      keep_alive!
-    # Pass exceptions up to parent thread
-    rescue Exception => exp
-      unless @socket.nil?
-        @socket.close
-        @socket = nil
-        handle_close
-      end
-      Thread.current[:parent].raise(exp)
+
+      handle_keep_alives
     end
 
-    def register_for_ack(id)
+    def register_for_ack(packet)
       queue = Queue.new
 
-      @acks_semaphore.synchronize do
-        @acks[id] = queue
+      timeout_at = current_time + @ack_timeout
+      @acks_mutex.synchronize do
+        if @acks.empty?
+          # just need to wake up the read thread to set up the timeout for this packet
+          @wake_up_pipe[1].write('z')
+        end
+        @acks[packet.id] = PendingAck.new(packet, queue, timeout_at, 1)
       end
-      queue
     end
 
-    def wait_for_ack(id, queue)
-      deadline = current_time + @ack_timeout
-
-      loop do
-        response = queue.pop
-        case response
-        when :read_timeout
-          return -1 if current_time > deadline
-        when :close
-          return -1
-        else
-          @acks_semaphore.synchronize do
-            @acks.delete id
-          end
-          break
-        end
+    def wait_for_ack(pending_ack)
+      response = pending_ack.queue.pop
+      case response
+      when :close
+        raise ConnectionClosedException
+      when :resend_limit_exceeded
+        raise ResendLimitExceededException
       end
     end
 
     def handle_packet(packet)
+      @last_packet_received_at = current_time
+      @keep_alive_sent = false
       case packet
       when MQTT::Packet::Publish
         # Add to queue
         @read_queue.push(packet)
       when MQTT::Packet::Pingresp
-        @last_ping_response = Time.now
+        # do nothing; setting @last_packet_received_at already handled it
       when MQTT::Packet::Puback,
         MQTT::Packet::Suback,
         MQTT::Packet::Unsuback
-        @acks_semaphore.synchronize do
-          @acks[packet.id] << packet if @acks[packet.id]
+        @acks_mutex.synchronize do
+          pending_ack = @acks[packet.id]
+          if pending_ack
+            @acks.delete(packet.id)
+            pending_ack.queue << packet
+          end
         end
       end
       # Ignore all other packets
@@ -540,43 +641,66 @@ module MQTT
     end
 
     def handle_timeouts
-      @acks_semaphore.synchronize do
-        @acks.each_value { |q| q << :read_timeout }
+      @acks_mutex.synchronize do
+        current_time = self.current_time
+        @acks.each_value do |pending_ack|
+          if pending_ack.timeout_at <= current_time
+            resend(pending_ack)
+          else
+            break
+          end
+        end
       end
     end
 
-    def handle_close
-      @acks_semaphore.synchronize do
-        @acks.each_value { |q| q << :close }
+    def resend(pending_ack)
+      packet = pending_ack.packet
+      if (pending_ack.send_count += 1) > @resend_limit
+        @acks.delete(packet.id)
+        pending_ack.queue << :resend_limit_exceeded
+        return
       end
+      # timed out, or simple re-send
+      if @acks.first.first == packet.id
+        @wake_up_pipe[1].write('z')
+      end
+      pending_ack.timeout_at = current_time + @ack_timeout
+      # TODO: set re-send flag
+      send_packet(packet)
     end
 
-    if Process.const_defined? :CLOCK_MONOTONIC
-      def current_time
-        Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      end
-    else
-      # Support older Ruby
-      def current_time
-        Time.now.to_f
-      end
+    def current_time
+      Process.clock_gettime(Process::CLOCK_MONOTONIC)
     end
 
-    def keep_alive!
-      return unless @keep_alive > 0 && connected?
+    def next_timeout
+      timeout_from_acks = @acks_mutex.synchronize do
+        @acks.first&.last&.timeout_at
+      end
+      return nil if timeout_from_acks.nil? && @keep_alive.nil?
 
-      response_timeout = (@keep_alive * 1.5).ceil
-      if Time.now >= @last_ping_request + @keep_alive
+      next_ping = @last_packet_received_at + @keep_alive if @keep_alive && !@keep_alive_sent
+      next_ping = @last_packet_received_at + @keep_alive + @ack_timeout if @keep_alive && @keep_alive_sent
+      current_time = self.current_time
+      [([timeout_from_acks, next_ping].compact.min || current_time) - current_time, 0].max
+    end
+
+    def handle_keep_alives
+      return unless @keep_alive
+
+      current_time = self.current_time
+      if current_time >= @last_packet_received_at + @keep_alive && !@keep_alive_sent
         packet = MQTT::Packet::Pingreq.new
-        send_packet(packet)
-        @last_ping_request = Time.now
-      elsif Time.now > @last_ping_response + response_timeout
-        raise MQTT::ProtocolException, "No Ping Response received for #{response_timeout} seconds"
+        #send_packet(packet)
+        @keep_alive_sent = true
+      elsif current_time >= @last_packet_received_at + @keep_alive + @ack_timeout
+        reconnect(KeepAliveTimeout.new)
+        Thread.exit
       end
     end
 
     def puback_packet(packet)
-      send_packet(MQTT::Packet::Puback.new(:id => packet.id))
+      send_packet(MQTT::Packet::Puback.new(id: packet.id))
     end
 
     # Read and check a connection acknowledgement packet
@@ -594,18 +718,14 @@ module MQTT
           @socket.close
           raise MQTT::ProtocolException, packet.return_msg
         end
+        @last_packet_received_at = current_time
+        @keep_alive_sent = false
       end
     end
 
     # Send a packet to server
-    def send_packet(data)
-      # Raise exception if we aren't connected
-      raise MQTT::NotConnectedException unless connected?
-
-      # Only allow one thread to write to socket at a time
-      @write_semaphore.synchronize do
-        @socket.write(data.to_s)
-      end
+    def send_packet(packet)
+      @write_queue << packet
     end
 
     def parse_uri(uri)
@@ -619,11 +739,11 @@ module MQTT
       end
 
       {
-        :host => uri.host,
-        :port => uri.port || nil,
-        :username => uri.user ? URI.unescape(uri.user) : nil,
-        :password => uri.password ? URI.unescape(uri.password) : nil,
-        :ssl => ssl
+        host: uri.host,
+        port: uri.port || nil,
+        username: uri.user ? URI.unescape(uri.user) : nil,
+        password: uri.password ? URI.unescape(uri.password) : nil,
+        ssl: ssl
       }
     end
 
@@ -631,29 +751,6 @@ module MQTT
       @last_packet_id = (@last_packet_id || 0).next
       @last_packet_id = 1 if @last_packet_id > 0xffff
       @last_packet_id
-    end
-
-    # ---- Deprecated attributes and methods  ---- #
-    public
-
-    # @deprecated Please use {#host} instead
-    def remote_host
-      host
-    end
-
-    # @deprecated Please use {#host=} instead
-    def remote_host=(args)
-      self.host = args
-    end
-
-    # @deprecated Please use {#port} instead
-    def remote_port
-      port
-    end
-
-    # @deprecated Please use {#port=} instead
-    def remote_port=(args)
-      self.port = args
     end
   end
 end

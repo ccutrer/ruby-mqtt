@@ -20,18 +20,32 @@ module MQTT
   DEFAULT_SSL_PORT = 8883
 
   # Super-class for other MQTT related exceptions
-  class Exception < ::Exception
+  class Exception < RuntimeError
   end
 
   # A ProtocolException will be raised if there is a
   # problem with data received from a remote host
-  class ProtocolException < MQTT::Exception
+  class ProtocolException < Exception
+  end
+
+  class KeepAliveTimeout < ProtocolException
   end
 
   # A NotConnectedException will be raised when trying to
   # perform a function but no connection has been
   # established
-  class NotConnectedException < MQTT::Exception
+  class NotConnectedException < Exception
+  end
+
+  # A ConnectionClosedException will be raised when the
+  # connection has been closed while waiting for an operation
+  # to complete
+  class ConnectionClosedException < Exception
+  end
+
+  # A ResendLimitExceededException will be raised when a packet
+  # has timed out without an ack too many times
+  class ResendLimitExceededException < Exception
   end
 
   autoload :Client,   'mqtt/client'

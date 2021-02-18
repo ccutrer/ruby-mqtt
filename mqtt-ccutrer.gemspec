@@ -1,16 +1,14 @@
 require_relative 'lib/mqtt/version'
 
 Gem::Specification.new do |gem|
-  gem.name        = 'ccutrer-mqtt'
+  gem.name        = 'mqtt-ccutrer'
   gem.version     = MQTT::VERSION
-  gem.author      = 'Nicholas J Humfrey'
-  gem.email       = 'njh@aelius.com'
-  gem.homepage    = 'http://github.com/njh/ruby-mqtt'
+  gem.author      = 'Cody Cutrer'
+  gem.email       = 'cody@cutrer.us'
+  gem.homepage    = 'http://github.com/ccutrer/ruby-mqtt'
   gem.summary     = 'Implementation of the MQTT protocol'
   gem.description = 'Pure Ruby gem that implements the MQTT protocol, a lightweight protocol for publish/subscribe messaging.'
-  gem.license     = 'MIT' if gem.respond_to?(:license=)
-
-  gem.rubyforge_project = 'mqtt'
+  gem.license     = 'MIT'
 
   gem.files         = %w[README.md LICENSE.md NEWS.md] + Dir.glob('lib/**/*.rb')
   gem.test_files    = Dir.glob('spec/*_spec.rb')
