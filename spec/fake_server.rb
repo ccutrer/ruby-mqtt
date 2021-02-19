@@ -103,13 +103,13 @@ class MQTT::FakeServer
           @last_publish = packet
 
           if packet.qos > 0
-            puback = MQTT::Packet::Puback.new(:id => packet.id)
+            puback = MQTT::Packet::Puback.new(id: packet.id)
             client.write puback
           end
         when MQTT::Packet::Subscribe
           client.write MQTT::Packet::Suback.new(
-            :id => packet.id,
-            :return_codes => 0
+            id: packet.id,
+            return_codes: 0
           )
           topic = packet.topics[0][0]
           client.write MQTT::Packet::Publish.new(

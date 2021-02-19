@@ -47,35 +47,35 @@ describe MQTT::Client do
     end
 
     it "with names arguments, it should use those as arguments" do
-      client = MQTT::Client.new(:host => 'otherhost.mqtt.org', :port => 1000)
+      client = MQTT::Client.new(host: 'otherhost.mqtt.org', port: 1000)
       expect(client.host).to eq('otherhost.mqtt.org')
       expect(client.port).to eq(1000)
       expect(client.keep_alive).to eq(15)
     end
 
     it "with a hash, it should use those as arguments" do
-      client = MQTT::Client.new({:host => 'otherhost.mqtt.org', :port => 1000})
+      client = MQTT::Client.new({host: 'otherhost.mqtt.org', port: 1000})
       expect(client.host).to eq('otherhost.mqtt.org')
       expect(client.port).to eq(1000)
       expect(client.keep_alive).to eq(15)
     end
 
     it "with a hash containing just a keep alive setting" do
-      client = MQTT::Client.new(:host => 'localhost', :keep_alive => 60)
+      client = MQTT::Client.new(host: 'localhost', keep_alive: 60)
       expect(client.host).to eq('localhost')
       expect(client.port).to eq(1883)
       expect(client.keep_alive).to eq(60)
     end
 
     it "with a combination of a host name and a hash of settings" do
-      client = MQTT::Client.new('localhost', :keep_alive => 65)
+      client = MQTT::Client.new('localhost', keep_alive: 65)
       expect(client.host).to eq('localhost')
       expect(client.port).to eq(1883)
       expect(client.keep_alive).to eq(65)
     end
 
     it "with a combination of a host name, port and a hash of settings" do
-      client = MQTT::Client.new('localhost', 1888, :keep_alive => 65)
+      client = MQTT::Client.new('localhost', 1888, keep_alive: 65)
       expect(client.host).to eq('localhost')
       expect(client.port).to eq(1888)
       expect(client.keep_alive).to eq(65)
@@ -146,7 +146,7 @@ describe MQTT::Client do
     end
 
     it "with a URI and a hash of settings" do
-      client = MQTT::Client.new('mqtt://mqtt.example.com', :keep_alive => 65)
+      client = MQTT::Client.new('mqtt://mqtt.example.com', keep_alive: 65)
       expect(client.host).to eq('mqtt.example.com')
       expect(client.port).to eq(1883)
       expect(client.keep_alive).to eq(65)
@@ -366,17 +366,17 @@ describe MQTT::Client do
         double(
           "SSLSocket",
           :sync_close= => true,
-          :write => true,
-          :connect => true,
-          :closed? => false
+          write: true,
+          connect: true,
+          closed?: false
         )
       }
 
-      it "should use ssl if it enabled using the :ssl => true parameter" do
+      it "should use ssl if it enabled using the ssl: true parameter" do
         expect(OpenSSL::SSL::SSLSocket).to receive(:new).and_return(ssl_socket)
         expect(ssl_socket).to receive(:connect)
 
-        client = MQTT::Client.new('mqtt.example.com', :ssl => true)
+        client = MQTT::Client.new('mqtt.example.com', ssl: true)
         allow(client).to receive(:receive_connack)
         client.connect
       end
@@ -394,7 +394,7 @@ describe MQTT::Client do
         expect(OpenSSL::SSL::SSLSocket).to receive(:new).and_return(ssl_socket)
         expect(ssl_socket).to receive(:connect)
 
-        client = MQTT::Client.new('mqtt.example.com', :ssl => :TLSv1)
+        client = MQTT::Client.new('mqtt.example.com', ssl: :TLSv1)
         expect(client.ssl_context).to receive('ssl_version=').with(:TLSv1)
         allow(client).to receive(:receive_connack)
         client.connect
@@ -555,7 +555,7 @@ describe MQTT::Client do
   describe "#publish" do
     class ClientWithPubackInjection < MQTT::Client
       def initialize
-        super(:host => 'localhost')
+        super(host: 'localhost')
         @injected_pubacks = {}
       end
 
@@ -953,7 +953,7 @@ describe MQTT::Client do
   end
 
   def inject_puback(packet_id)
-    packet = MQTT::Packet::Puback.new(:id => packet_id)
+    packet = MQTT::Packet::Puback.new(id: packet_id)
     client.inject_puback packet
   end
 

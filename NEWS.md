@@ -1,6 +1,29 @@
 Ruby MQTT NEWS
 ==============
 
+Ruby MQTT Version 1.0.0 (2021-02-19) (CCutrer fork)
+---------------------------------------------------
+* Increase minimum Ruby version to 2.5
+* Change several methods to take kwargs
+* Remove `get` vs. `get_packet`; just always return packets from get
+* `get` no longer takes an optional topic to subscribe to; just call
+  `subscribe`
+* Remove `last_ping_response` since it's not recorded anymore
+* Remove deprecated `remote_host` and `remote_port`
+* `connect` no longer takes an optional client id; just set it beforehand
+* Add `batch_publish` method for improving performance of QoS 1 publishes
+* Add `flush` method to ensure writes have finished, since writes are
+  now done in a background thread
+* Add `wait_for_ack` param to `subscribe` and `unsubscribe`
+* Automatic reconnects
+* Re-send Pub, Sub, and Unsub packets that don't get acked, even across
+  server disconnects
+* Only send keepalive pings if we haven't received any other packets,
+  and measure from the last packet received, instead of the last ping
+  sent
+* Improve CPU usage by only checking for timeouts at the time of the
+  timeout, instead of polling
+
 Ruby MQTT Version 0.5.0 (2017-04-16)
 ------------------------------------
 

@@ -9,9 +9,9 @@ require 'mqtt'
 
 
 MQTT::Client.connect(
-  :host => 'test.mosquitto.org',
-  :username => 'test',
-  :password => 'password'
+  host: 'test.mosquitto.org',
+  username: 'test',
+  password: 'password'
 ) do |client|
   puts 'connected'
 
@@ -24,8 +24,8 @@ MQTT::Client.connect(
   end
 
   # when a block is passed to #get, it loops infinitely so this has to be the last line of our program
-  client.get("test/ruby/#") do |topic, msg|
-    puts "Got message '#{msg}' on topic '#{topic}'"
+  client.get("test/ruby/#") do |packet|
+    puts "Got message '#{packet.payload}' on topic '#{packet.topic}'"
   end
 
 end

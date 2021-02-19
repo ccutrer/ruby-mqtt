@@ -25,17 +25,13 @@ namespace :doc do
   end
 end
 
-task :test => :spec
-task :specs => :spec
+task test: :spec
+task specs: :spec
 
-if Gem.ruby_version > Gem::Version.new('2.0')
-  require 'rubocop/rake_task'
+require 'rubocop/rake_task'
 
-  RuboCop::RakeTask.new do |task|
-    task.options = ["-DS"]
-  end
-
-  task :default => [:spec, :rubocop]
-else
-  task :default => :spec
+RuboCop::RakeTask.new do |task|
+  task.options = ["-DS"]
 end
+
+task default: [:spec, :rubocop]

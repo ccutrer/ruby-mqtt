@@ -9,7 +9,7 @@ describe MQTT::SN::Packet do
 
   describe "when creating a new packet" do
     it "should allow you to set the packet dup flag as a hash parameter" do
-      packet = MQTT::SN::Packet.new(:duplicate => true)
+      packet = MQTT::SN::Packet.new(duplicate: true)
       expect(packet.duplicate).to be_truthy
     end
 
@@ -57,7 +57,7 @@ describe MQTT::SN::Packet::Advertise do
 
   describe "when serialising a packet" do
     it "should output the correct bytes" do
-      packet = MQTT::SN::Packet::Advertise.new(:gateway_id => 5, :duration => 30)
+      packet = MQTT::SN::Packet::Advertise.new(gateway_id: 5, duration: 30)
       expect(packet.to_s).to eq("\x05\x00\x05\x00\x1E")
     end
   end
@@ -88,7 +88,7 @@ describe MQTT::SN::Packet::Searchgw do
 
   describe "when serialising a packet" do
     it "should output the correct bytes" do
-      packet = MQTT::SN::Packet::Searchgw.new(:radius => 2)
+      packet = MQTT::SN::Packet::Searchgw.new(radius: 2)
       expect(packet.to_s).to eq("\x03\x01\x02")
     end
   end
@@ -115,12 +115,12 @@ describe MQTT::SN::Packet::Gwinfo do
 
   describe "when serialising a packet" do
     it "should output the correct bytes when there is no gateway address" do
-      packet = MQTT::SN::Packet::Gwinfo.new(:gateway_id => 6)
+      packet = MQTT::SN::Packet::Gwinfo.new(gateway_id: 6)
       expect(packet.to_s).to eq("\x03\x02\x06")
     end
 
     it "should output the correct bytes with a gateway address" do
-      packet = MQTT::SN::Packet::Gwinfo.new(:gateway_id => 6, :gateway_address => 'ADDR')
+      packet = MQTT::SN::Packet::Gwinfo.new(gateway_id: 6, gateway_address: 'ADDR')
       expect(packet.to_s).to eq("\x07\x02\x06ADDR")
     end
   end
@@ -168,15 +168,15 @@ describe MQTT::SN::Packet::Connect do
   describe "when serialising a packet" do
     it "should output the correct bytes for a packet with no flags" do
       packet = MQTT::SN::Packet::Connect.new(
-        :client_id => 'mqtt-sn-client-pub'
+        client_id: 'mqtt-sn-client-pub'
       )
       expect(packet.to_s).to eq("\x18\x04\x04\x01\x00\x0fmqtt-sn-client-pub")
     end
 
     it "should output the correct bytes for a packet with clean session turned off" do
       packet = MQTT::SN::Packet::Connect.new(
-        :client_id => 'myclient',
-        :clean_session => false
+        client_id: 'myclient',
+        clean_session: false
       )
       expect(packet.to_s).to eq("\016\004\000\001\000\017myclient")
     end
@@ -191,19 +191,19 @@ describe MQTT::SN::Packet::Connect do
 
     it "should output the correct bytes for a packet with a will request" do
       packet = MQTT::SN::Packet::Connect.new(
-        :client_id => 'myclient',
-        :request_will => true,
-        :clean_session => true
+        client_id: 'myclient',
+        request_will: true,
+        clean_session: true
       )
       expect(packet.to_s).to eq("\016\004\014\001\000\017myclient")
     end
 
     it "should output the correct bytes for with a custom keep alive" do
       packet = MQTT::SN::Packet::Connect.new(
-        :client_id => 'myclient',
-        :request_will => true,
-        :clean_session => true,
-        :keep_alive => 30
+        client_id: 'myclient',
+        request_will: true,
+        clean_session: true,
+        keep_alive: 30
       )
       expect(packet.to_s).to eq("\016\004\014\001\000\036myclient")
     end
@@ -293,12 +293,12 @@ describe MQTT::SN::Packet::Connack do
 
   describe "when serialising a packet" do
     it "should output the correct bytes for a sucessful connection acknowledgement packet" do
-      packet = MQTT::SN::Packet::Connack.new(:return_code => 0x00)
+      packet = MQTT::SN::Packet::Connack.new(return_code: 0x00)
       expect(packet.to_s).to eq("\x03\x05\x00")
     end
 
     it "should raise an exception if the return code isn't an Integer" do
-      packet = MQTT::SN::Packet::Connack.new(:return_code => true)
+      packet = MQTT::SN::Packet::Connack.new(return_code: true)
       expect { packet.to_s }.to raise_error("return_code must be an Integer")
     end
   end
@@ -414,22 +414,22 @@ describe MQTT::SN::Packet::Willtopic do
 
   describe "when serialising a packet" do
     it "should output the correct bytes for a Willtopic packet" do
-      packet = MQTT::SN::Packet::Willtopic.new(:topic_name => 'test', qos: 0)
+      packet = MQTT::SN::Packet::Willtopic.new(topic_name: 'test', qos: 0)
       expect(packet.to_s).to eq("\x07\x07\x00test")
     end
 
     it "should output the correct bytes for a Willtopic packet with QoS 1" do
-      packet = MQTT::SN::Packet::Willtopic.new(:topic_name => 'test', qos: 1)
+      packet = MQTT::SN::Packet::Willtopic.new(topic_name: 'test', qos: 1)
       expect(packet.to_s).to eq("\x07\x07\x20test")
     end
 
     it "should output the correct bytes for a Willtopic packet with no topic name" do
-      packet = MQTT::SN::Packet::Willtopic.new(:topic_name => nil)
+      packet = MQTT::SN::Packet::Willtopic.new(topic_name: nil)
       expect(packet.to_s).to eq("\x02\x07")
     end
 
     it "should output the correct bytes for a Willtopic packet with an empty topic name" do
-      packet = MQTT::SN::Packet::Willtopic.new(:topic_name => '')
+      packet = MQTT::SN::Packet::Willtopic.new(topic_name: '')
       expect(packet.to_s).to eq("\x02\x07")
     end
   end
@@ -497,7 +497,7 @@ describe MQTT::SN::Packet::Willmsg do
 
   describe "when serialising a packet" do
     it "should output the correct bytes for a Willmsg packet" do
-      packet = MQTT::SN::Packet::Willmsg.new(:data => 'msg')
+      packet = MQTT::SN::Packet::Willmsg.new(data: 'msg')
       expect(packet.to_s).to eq("\x05\x09msg")
     end
   end
@@ -524,20 +524,20 @@ describe MQTT::SN::Packet::Register do
   describe "when serialising a packet" do
     it "should output the correct bytes" do
       packet = MQTT::SN::Packet::Register.new(
-        :id => 0x01,
-        :topic_id => 0x01,
-        :topic_name => 'test'
+        id: 0x01,
+        topic_id: 0x01,
+        topic_name: 'test'
       )
       expect(packet.to_s).to eq("\x0A\x0A\x00\x01\x00\x01test")
     end
 
     it "should raise an exception if the Packet Id isn't an Integer" do
-      packet = MQTT::SN::Packet::Register.new(:id => "0x45")
+      packet = MQTT::SN::Packet::Register.new(id: "0x45")
       expect { packet.to_s }.to raise_error("id must be an Integer")
     end
 
     it "should raise an exception if the Topic Id isn't an Integer" do
-      packet = MQTT::SN::Packet::Register.new(:topic_id => "0x45")
+      packet = MQTT::SN::Packet::Register.new(topic_id: "0x45")
       expect { packet.to_s }.to raise_error("topic_id must be an Integer")
     end
   end
@@ -577,20 +577,20 @@ describe MQTT::SN::Packet::Regack do
   describe "when serialising a packet" do
     it "should output the correct bytes" do
       packet = MQTT::SN::Packet::Regack.new(
-        :id => 0x02,
-        :topic_id => 0x01,
-        :return_code => 0x03
+        id: 0x02,
+        topic_id: 0x01,
+        return_code: 0x03
       )
       expect(packet.to_s).to eq("\x07\x0B\x00\x01\x00\x02\x03")
     end
 
     it "should raise an exception if the Packet Id isn't an Integer" do
-      packet = MQTT::SN::Packet::Regack.new(:id => "0x45")
+      packet = MQTT::SN::Packet::Regack.new(id: "0x45")
       expect { packet.to_s }.to raise_error("id must be an Integer")
     end
 
     it "should raise an exception if the Topic Id isn't an Integer" do
-      packet = MQTT::SN::Packet::Regack.new(:topic_id => "0x45")
+      packet = MQTT::SN::Packet::Regack.new(topic_id: "0x45")
       expect { packet.to_s }.to raise_error("topic_id must be an Integer")
     end
   end
@@ -630,15 +630,15 @@ describe MQTT::SN::Packet::Publish do
   describe "when serialising a packet with a normal topic id type" do
     it "should output the correct bytes for a publish packet" do
       packet = MQTT::SN::Packet::Publish.new(
-        :topic_id => 0x01,
-        :topic_id_type => :normal,
-        :data => "Hello World"
+        topic_id: 0x01,
+        topic_id_type: :normal,
+        data: "Hello World"
       )
       expect(packet.to_s).to eq("\x12\x0C\x00\x00\x01\x00\x00Hello World")
     end
 
     it "should raise an exception if the Packet Id isn't an Integer" do
-      packet = MQTT::SN::Packet::Publish.new(:id => "0x45")
+      packet = MQTT::SN::Packet::Publish.new(id: "0x45")
       expect { packet.to_s }.to raise_error("id must be an Integer")
     end
   end
@@ -647,9 +647,9 @@ describe MQTT::SN::Packet::Publish do
     it "should output the correct bytes for a publish packet of QoS -1" do
       packet = MQTT::SN::Packet::Publish.new(
         qos: -1,
-        :topic_id => 'tt',
-        :topic_id_type => :short,
-        :data => "Hello World"
+        topic_id: 'tt',
+        topic_id_type: :short,
+        data: "Hello World"
       )
       expect(packet.to_s).to eq("\x12\x0C\x62tt\x00\x00Hello World")
     end
@@ -657,9 +657,9 @@ describe MQTT::SN::Packet::Publish do
     it "should output the correct bytes for a publish packet of QoS 0" do
       packet = MQTT::SN::Packet::Publish.new(
         qos: 0,
-        :topic_id => 'tt',
-        :topic_id_type => :short,
-        :data => "Hello World"
+        topic_id: 'tt',
+        topic_id_type: :short,
+        data: "Hello World"
       )
       expect(packet.to_s).to eq("\x12\x0C\x02tt\x00\x00Hello World")
     end
@@ -667,9 +667,9 @@ describe MQTT::SN::Packet::Publish do
     it "should output the correct bytes for a publish packet of QoS 1" do
       packet = MQTT::SN::Packet::Publish.new(
         qos: 1,
-        :topic_id => 'tt',
-        :topic_id_type => :short,
-        :data => "Hello World"
+        topic_id: 'tt',
+        topic_id_type: :short,
+        data: "Hello World"
       )
       expect(packet.to_s).to eq("\x12\x0C\x22tt\x00\x00Hello World")
     end
@@ -677,9 +677,9 @@ describe MQTT::SN::Packet::Publish do
     it "should output the correct bytes for a publish packet of QoS 2" do
       packet = MQTT::SN::Packet::Publish.new(
         qos: 2,
-        :topic_id => 'tt',
-        :topic_id_type => :short,
-        :data => "Hello World"
+        topic_id: 'tt',
+        topic_id_type: :short,
+        data: "Hello World"
       )
       expect(packet.to_s).to eq("\x12\x0C\x42tt\x00\x00Hello World")
     end
@@ -688,9 +688,9 @@ describe MQTT::SN::Packet::Publish do
   describe "when serialising a packet with a pre-defined topic id type" do
     it "should output the correct bytes for a publish packet" do
       packet = MQTT::SN::Packet::Publish.new(
-        :topic_id => 0x00EE,
-        :topic_id_type => :predefined,
-        :data => "Hello World"
+        topic_id: 0x00EE,
+        topic_id_type: :predefined,
+        data: "Hello World"
       )
       expect(packet.to_s).to eq("\x12\x0C\x01\x00\xEE\x00\x00Hello World")
     end
@@ -699,9 +699,9 @@ describe MQTT::SN::Packet::Publish do
   describe "when serialising packet larger than 256 bytes" do
     let(:packet) {
       MQTT::SN::Packet::Publish.new(
-        :topic_id => 0x10,
-        :topic_id_type => :normal,
-        :data => "Hello World" * 100
+        topic_id: 0x10,
+        topic_id_type: :normal,
+        data: "Hello World" * 100
       )
     }
 
@@ -718,9 +718,9 @@ describe MQTT::SN::Packet::Publish do
     it "should raise an exception" do
       expect {
         MQTT::SN::Packet::Publish.new(
-          :topic_id => 0x01,
-          :topic_id_type => :normal,
-          :data => "Hello World" * 6553
+          topic_id: 0x01,
+          topic_id_type: :normal,
+          data: "Hello World" * 6553
         ).to_s
       }.to raise_error(
         RuntimeError,
@@ -934,17 +934,17 @@ describe MQTT::SN::Packet::Puback do
 
   describe "when serialising a packet" do
     it "should output the correct bytes" do
-      packet = MQTT::SN::Packet::Puback.new(:id => 0x02, :topic_id => 0x03, :return_code => 0x01)
+      packet = MQTT::SN::Packet::Puback.new(id: 0x02, topic_id: 0x03, return_code: 0x01)
       expect(packet.to_s).to eq("\x07\x0D\x00\x03\x00\x02\x01")
     end
 
     it "should raise an exception if the Packet Id isn't an Integer" do
-      packet = MQTT::SN::Packet::Puback.new(:id => "0x45")
+      packet = MQTT::SN::Packet::Puback.new(id: "0x45")
       expect { packet.to_s }.to raise_error("id must be an Integer")
     end
 
     it "should raise an exception if the Topic Id isn't an Integer" do
-      packet = MQTT::SN::Packet::Puback.new(:topic_id => "0x45")
+      packet = MQTT::SN::Packet::Puback.new(topic_id: "0x45")
       expect { packet.to_s }.to raise_error("topic_id must be an Integer")
     end
   end
@@ -978,12 +978,12 @@ describe MQTT::SN::Packet::Pubcomp do
 
   describe "when serialising a packet" do
     it "should output the correct bytes" do
-      packet = MQTT::SN::Packet::Pubcomp.new(:id => 0x02)
+      packet = MQTT::SN::Packet::Pubcomp.new(id: 0x02)
       expect(packet.to_s).to eq("\x04\x0E\x00\x02")
     end
 
     it "should raise an exception if the Packet Id isn't an Integer" do
-      packet = MQTT::SN::Packet::Pubcomp.new(:id => "0x45")
+      packet = MQTT::SN::Packet::Pubcomp.new(id: "0x45")
       expect { packet.to_s }.to raise_error("id must be an Integer")
     end
   end
@@ -1009,12 +1009,12 @@ describe MQTT::SN::Packet::Pubrec do
 
   describe "when serialising a packet" do
     it "should output the correct bytes" do
-      packet = MQTT::SN::Packet::Pubrec.new(:id => 0x02)
+      packet = MQTT::SN::Packet::Pubrec.new(id: 0x02)
       expect(packet.to_s).to eq("\x04\x0F\x00\x02")
     end
 
     it "should raise an exception if the Packet Id isn't an Integer" do
-      packet = MQTT::SN::Packet::Pubrec.new(:id => "0x45")
+      packet = MQTT::SN::Packet::Pubrec.new(id: "0x45")
       expect { packet.to_s }.to raise_error("id must be an Integer")
     end
   end
@@ -1041,12 +1041,12 @@ describe MQTT::SN::Packet::Pubrel do
 
   describe "when serialising a packet" do
     it "should output the correct bytes" do
-      packet = MQTT::SN::Packet::Pubrel.new(:id => 0x02)
+      packet = MQTT::SN::Packet::Pubrel.new(id: 0x02)
       expect(packet.to_s).to eq("\x04\x10\x00\x02")
     end
 
     it "should raise an exception if the Packet Id isn't an Integer" do
-      packet = MQTT::SN::Packet::Pubrel.new(:id => "0x45")
+      packet = MQTT::SN::Packet::Pubrel.new(id: "0x45")
       expect { packet.to_s }.to raise_error("id must be an Integer")
     end
   end
@@ -1074,49 +1074,49 @@ describe MQTT::SN::Packet::Subscribe do
   describe "when serialising a packet" do
     it "should output the correct bytes for a Subscribe packet with a normal topic name" do
       packet = MQTT::SN::Packet::Subscribe.new(
-        :duplicate => false,
+        duplicate: false,
         qos: 0,
-        :id => 0x02,
-        :topic_name => 'test'
+        id: 0x02,
+        topic_name: 'test'
       )
       expect(packet.to_s).to eq("\x09\x12\x00\x00\x02test")
     end
 
     it "should output the correct bytes for a Subscribe packet with a short topic name" do
       packet = MQTT::SN::Packet::Subscribe.new(
-        :duplicate => false,
+        duplicate: false,
         qos: 0,
-        :id => 0x04,
-        :topic_id_type => :short,
-        :topic_name => 'TT'
+        id: 0x04,
+        topic_id_type: :short,
+        topic_name: 'TT'
       )
       expect(packet.to_s).to eq("\x07\x12\x02\x00\x04TT")
     end
 
     it "should output the correct bytes for a Subscribe packet with a short topic id" do
       packet = MQTT::SN::Packet::Subscribe.new(
-        :duplicate => false,
+        duplicate: false,
         qos: 0,
-        :id => 0x04,
-        :topic_id_type => :short,
-        :topic_id => 'TT'
+        id: 0x04,
+        topic_id_type: :short,
+        topic_id: 'TT'
       )
       expect(packet.to_s).to eq("\x07\x12\x02\x00\x04TT")
     end
 
     it "should output the correct bytes for a Subscribe packet with a predefined topic id" do
       packet = MQTT::SN::Packet::Subscribe.new(
-        :duplicate => false,
+        duplicate: false,
         qos: 0,
-        :id => 0x05,
-        :topic_id_type => :predefined,
-        :topic_id => 16
+        id: 0x05,
+        topic_id_type: :predefined,
+        topic_id: 16
       )
       expect(packet.to_s).to eq("\x07\x12\x01\x00\x05\x00\x10")
     end
 
     it "should raise an exception if the Packet Id isn't an Integer" do
-      packet = MQTT::SN::Packet::Subscribe.new(:id => "0x45")
+      packet = MQTT::SN::Packet::Subscribe.new(id: "0x45")
       expect { packet.to_s }.to raise_error("id must be an Integer")
     end
   end
@@ -1224,45 +1224,45 @@ describe MQTT::SN::Packet::Suback do
   describe "when serialising a packet" do
     it "should output the correct bytes for a normal topic id" do
       packet = MQTT::SN::Packet::Suback.new(
-        :id => 0x02,
+        id: 0x02,
         qos: 0,
-        :topic_id => 0x01,
-        :return_code => 0x03
+        topic_id: 0x01,
+        return_code: 0x03
       )
       expect(packet.to_s).to eq("\x08\x13\x00\x00\x01\x00\x02\x03")
     end
 
     it "should output the correct bytes for a short topic id" do
       packet = MQTT::SN::Packet::Suback.new(
-        :id => 0x03,
+        id: 0x03,
         qos: 0,
-        :topic_id => 'tt',
-        :topic_id_type => :short,
-        :return_code => 0x03
+        topic_id: 'tt',
+        topic_id_type: :short,
+        return_code: 0x03
       )
       expect(packet.to_s).to eq("\x08\x13\x02tt\x00\x03\x03")
     end
 
     it "should output the correct bytes for a packet with no topic id" do
       packet = MQTT::SN::Packet::Suback.new(
-        :id => 0x02,
-        :return_code => 0x02
+        id: 0x02,
+        return_code: 0x02
       )
       expect(packet.to_s).to eq("\x08\x13\x00\x00\x00\x00\x02\x02")
     end
 
     it "should raise an exception if the Packet Id isn't an Integer" do
-      packet = MQTT::SN::Packet::Suback.new(:id => "0x45")
+      packet = MQTT::SN::Packet::Suback.new(id: "0x45")
       expect { packet.to_s }.to raise_error("id must be an Integer")
     end
 
     it "should raise an exception if the Topic Id isn't an Integer" do
-      packet = MQTT::SN::Packet::Suback.new(:topic_id => "0x45", :topic_id_type => :normal)
+      packet = MQTT::SN::Packet::Suback.new(topic_id: "0x45", topic_id_type: :normal)
       expect { packet.to_s }.to raise_error("topic_id must be an Integer for type normal")
     end
 
     it "should raise an exception if the Topic Id isn't a String" do
-      packet = MQTT::SN::Packet::Suback.new(:topic_id => 10, :topic_id_type => :short)
+      packet = MQTT::SN::Packet::Suback.new(topic_id: 10, topic_id_type: :short)
       expect { packet.to_s }.to raise_error("topic_id must be an String for type short")
     end
   end
@@ -1306,49 +1306,49 @@ describe MQTT::SN::Packet::Unsubscribe do
   describe "when serialising a packet" do
     it "should output the correct bytes for a Unsubscribe packet with a normal topic name" do
       packet = MQTT::SN::Packet::Unsubscribe.new(
-        :id => 0x02,
-        :duplicate => false,
+        id: 0x02,
+        duplicate: false,
         qos: 0,
-        :topic_name => 'test'
+        topic_name: 'test'
       )
       expect(packet.to_s).to eq("\x09\x14\x00\x00\x02test")
     end
 
     it "should output the correct bytes for a Unsubscribe packet with a short topic name" do
       packet = MQTT::SN::Packet::Unsubscribe.new(
-        :duplicate => false,
+        duplicate: false,
         qos: 0,
-        :id => 0x04,
-        :topic_id_type => :short,
-        :topic_name => 'TT'
+        id: 0x04,
+        topic_id_type: :short,
+        topic_name: 'TT'
       )
       expect(packet.to_s).to eq("\x07\x14\x02\x00\x04TT")
     end
 
     it "should output the correct bytes for a Unsubscribe packet with a short topic id" do
       packet = MQTT::SN::Packet::Unsubscribe.new(
-        :duplicate => false,
+        duplicate: false,
         qos: 0,
-        :id => 0x04,
-        :topic_id_type => :short,
-        :topic_id => 'TT'
+        id: 0x04,
+        topic_id_type: :short,
+        topic_id: 'TT'
       )
       expect(packet.to_s).to eq("\x07\x14\x02\x00\x04TT")
     end
 
     it "should output the correct bytes for a Unsubscribe packet with a predefined topic id" do
       packet = MQTT::SN::Packet::Unsubscribe.new(
-        :duplicate => false,
+        duplicate: false,
         qos: 0,
-        :id => 0x05,
-        :topic_id_type => :predefined,
-        :topic_id => 16
+        id: 0x05,
+        topic_id_type: :predefined,
+        topic_id: 16
       )
       expect(packet.to_s).to eq("\x07\x14\x01\x00\x05\x00\x10")
     end
 
     it "should raise an exception if the Packet Id isn't an Integer" do
-      packet = MQTT::SN::Packet::Unsubscribe.new(:id => "0x45")
+      packet = MQTT::SN::Packet::Unsubscribe.new(id: "0x45")
       expect { packet.to_s }.to raise_error("id must be an Integer")
     end
   end
@@ -1451,12 +1451,12 @@ describe MQTT::SN::Packet::Unsuback do
 
   describe "when serialising a packet" do
     it "should output the correct bytes" do
-      packet = MQTT::SN::Packet::Unsuback.new(:id => 0x02)
+      packet = MQTT::SN::Packet::Unsuback.new(id: 0x02)
       expect(packet.to_s).to eq("\x04\x15\x00\x02")
     end
 
     it "should raise an exception if the Packet Id isn't an Integer" do
-      packet = MQTT::SN::Packet::Unsuback.new(:id => "0x45")
+      packet = MQTT::SN::Packet::Unsuback.new(id: "0x45")
       expect { packet.to_s }.to raise_error("id must be an Integer")
     end
   end
@@ -1534,7 +1534,7 @@ describe MQTT::SN::Packet::Disconnect do
     end
 
     it "should output the correct bytes for a disconnect packet with a duration" do
-      packet = MQTT::SN::Packet::Disconnect.new(:duration => 10)
+      packet = MQTT::SN::Packet::Disconnect.new(duration: 10)
       expect(packet.to_s).to eq("\x04\x18\x00\x0A")
     end
   end
@@ -1573,22 +1573,22 @@ describe MQTT::SN::Packet::Willtopicupd do
 
   describe "when serialising a packet" do
     it "should output the correct bytes for a Willtopicupd packet" do
-      packet = MQTT::SN::Packet::Willtopicupd.new(:topic_name => 'test', qos: 0)
+      packet = MQTT::SN::Packet::Willtopicupd.new(topic_name: 'test', qos: 0)
       expect(packet.to_s).to eq("\x07\x1A\x00test")
     end
 
     it "should output the correct bytes for a Willtopic packet with QoS 1" do
-      packet = MQTT::SN::Packet::Willtopicupd.new(:topic_name => 'test', qos: 1)
+      packet = MQTT::SN::Packet::Willtopicupd.new(topic_name: 'test', qos: 1)
       expect(packet.to_s).to eq("\x07\x1A\x20test")
     end
 
     it "should output the correct bytes for a Willtopic packet with no topic name" do
-      packet = MQTT::SN::Packet::Willtopicupd.new(:topic_name => nil)
+      packet = MQTT::SN::Packet::Willtopicupd.new(topic_name: nil)
       expect(packet.to_s).to eq("\x02\x1A")
     end
 
     it "should output the correct bytes for a Willtopic packet with an empty topic name" do
-      packet = MQTT::SN::Packet::Willtopicupd.new(:topic_name => '')
+      packet = MQTT::SN::Packet::Willtopicupd.new(topic_name: '')
       expect(packet.to_s).to eq("\x02\x1A")
     end
   end
@@ -1635,13 +1635,13 @@ describe MQTT::SN::Packet::Willtopicresp do
   describe "when serialising a packet" do
     it "should output the correct bytes" do
       packet = MQTT::SN::Packet::Willtopicresp.new(
-        :return_code => 0x03
+        return_code: 0x03
       )
       expect(packet.to_s).to eq("\x03\x1B\x03")
     end
 
     it "should raise an exception if the return code isn't an Integer" do
-      packet = MQTT::SN::Packet::Willtopicresp.new(:return_code => true)
+      packet = MQTT::SN::Packet::Willtopicresp.new(return_code: true)
       expect { packet.to_s }.to raise_error("return_code must be an Integer")
     end
   end
@@ -1668,7 +1668,7 @@ describe MQTT::SN::Packet::Willmsgupd do
 
   describe "when serialising a packet" do
     it "should output the correct bytes for a Willmsgupd packet" do
-      packet = MQTT::SN::Packet::Willmsgupd.new(:data => 'test1')
+      packet = MQTT::SN::Packet::Willmsgupd.new(data: 'test1')
       expect(packet.to_s).to eq("\x07\x1Ctest1")
     end
   end
@@ -1696,13 +1696,13 @@ describe MQTT::SN::Packet::Willmsgresp do
   describe "when serialising a packet" do
     it "should output the correct bytes" do
       packet = MQTT::SN::Packet::Willmsgresp.new(
-        :return_code => 0x03
+        return_code: 0x03
       )
       expect(packet.to_s).to eq("\x03\x1D\x03")
     end
 
     it "should raise an exception if the return code isn't an Integer" do
-      packet = MQTT::SN::Packet::Willmsgresp.new(:return_code => true)
+      packet = MQTT::SN::Packet::Willmsgresp.new(return_code: true)
       expect { packet.to_s }.to raise_error("return_code must be an Integer")
     end
   end

@@ -15,7 +15,7 @@ require 'mqtt'
 p OpenSSL::SSL::SSLContext::METHODS
 
 # Ruby 1.8 / 1.9 only support TLSv1
-client = MQTT::Client.new('localhost', :ssl => :TLSv1)
+client = MQTT::Client.new('localhost', ssl: :TLSv1)
 client.ca_file = './ca.pem'
 client.cert_file = './client.crt'
 client.key_file = './client.key'
@@ -27,6 +27,6 @@ client.connect do
   client.publish('test', "hello world")
 
   # If you pass a block to the get method, then it will loop
-  topic, message = client.get
-  p [topic, message]
+  packet = client.get
+  p [packet.topic, packet.message]
 end

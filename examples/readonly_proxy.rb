@@ -5,10 +5,10 @@ $:.unshift File.dirname(__FILE__)+'/../lib'
 require 'mqtt'
 
 proxy = MQTT::Proxy.new(
-    :local_host => '0.0.0.0',
-    :local_port => 1883,
-    :server_host => 'test.mosquitto.org',
-    :server_port => 1883
+    local_host: '0.0.0.0',
+    local_port: 1883,
+    server_host: 'test.mosquitto.org',
+    server_port: 1883
 )
 
 proxy.client_filter = lambda { |packet|

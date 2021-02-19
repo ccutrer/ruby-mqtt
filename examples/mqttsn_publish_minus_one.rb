@@ -14,9 +14,9 @@ require 'mqtt'
 socket = UDPSocket.new
 socket.connect('localhost', MQTT::SN::DEFAULT_PORT)
 socket << MQTT::SN::Packet::Publish.new(
-  :topic_id => 'TT',
-  :topic_id_type => :short,
-  :data => "The time is: #{Time.now}",
+  topic_id: 'TT',
+  topic_id_type: :short,
+  data: "The time is: #{Time.now}",
   qos: -1
 )
 socket.close

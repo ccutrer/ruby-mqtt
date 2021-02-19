@@ -396,7 +396,7 @@ module MQTT
     #   client.subscribe( 'a/b' )
     #   client.subscribe( 'a/b', 'c/d' )
     #   client.subscribe( ['a/b',0], ['c/d',1] )
-    #   client.subscribe( 'a/b' => 0, 'c/d' => 1 )
+    #   client.subscribe( { 'a/b' => 0, 'c/d' => 1 } )
     #
     def subscribe(*topics, wait_for_ack: false)
       raise NotConnectedException unless connected?
