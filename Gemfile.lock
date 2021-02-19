@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    ccutrer-mqtt (1.0.0)
+    mqtt-ccutrer (1.0.0)
 
 GEM
   remote: http://rubygems.org/
@@ -51,7 +51,7 @@ PLATFORMS
 DEPENDENCIES
   bundler (>= 1.11.2)
   byebug (~> 11.1)
-  ccutrer-mqtt!
+  mqtt-ccutrer!
   rake (>= 10.2.2)
   rspec (>= 3.5.0)
   rubocop (~> 0.48.0)

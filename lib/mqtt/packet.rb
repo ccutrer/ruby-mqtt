@@ -45,7 +45,7 @@ module MQTT
       end
 
       # Store the expected body length in the packet
-      packet.instance_variable_set('@body_length', body_length)
+      packet.instance_variable_set(:@body_length, body_length)
 
       # Read in the packet body
       packet.parse_body(socket.read(body_length))
@@ -91,7 +91,7 @@ module MQTT
       end
 
       # Store the expected body length in the packet
-      packet.instance_variable_set('@body_length', body_length)
+      packet.instance_variable_set(:@body_length, body_length)
 
       # Delete the fixed header from the raw packet passed in
       buffer.slice!(0...pos)
@@ -303,8 +303,8 @@ module MQTT
 
       # Default attribute values
       ATTR_DEFAULTS = {
-        :topic => nil,
-        :payload => ''
+        topic: nil,
+        payload: ''
       }
 
       # Create a new Publish packet

@@ -61,6 +61,7 @@ class MQTT::FakeServer
         @pings_received = 0
         handle_client(client)
         break if just_one_connection
+      rescue IOError
       end
     end
   end
@@ -112,9 +113,9 @@ class MQTT::FakeServer
           )
           topic = packet.topics[0][0]
           client.write MQTT::Packet::Publish.new(
-            :topic => topic,
-            :payload => "hello #{topic}",
-            :retain => true
+            topic: topic,
+            payload: "hello #{topic}",
+            retain: true
           )
         when MQTT::Packet::Pingreq
           @pings_received += 1

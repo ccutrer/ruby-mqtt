@@ -28,6 +28,7 @@ describe "a client talking to a server" do
       @client.connect
 
       @client.publish('test', 'foobar', **kwargs)
+      @client.flush
       @client.disconnect
       @server.thread.join(1)
     end
@@ -60,56 +61,19 @@ describe "a client talking to a server" do
     end
   end
 
-  context "connecting, subscribing to a topic and getting a message" do
-    def connect_and_subscribe
-      @client.connect
-      @client.subscribe('test')
-      @topic, @message = @client.get
-      @client.disconnect
-    end
-
-    it "the client should have received the right topic name" do
-      connect_and_subscribe
-      expect(@topic).to eq('test')
-    end
-
-    it "the client should have received the right message" do
-      connect_and_subscribe
-      expect(@message).to eq('hello test')
-    end
-
-    it "the server should not report any errors" do
-      connect_and_subscribe
-      expect(@error_log.string).to be_empty
-    end
-  end
-
   context "connecting, subscribing to a topic and getting a packet" do
     def connect_and_subscribe
       @client.connect
       @client.subscribe('test', 'foobar')
-      @packet = @client.get_packet
+      @packet = @client.get
       @client.disconnect
     end
 
-    it "the client should have received a packet" do
+    it "the client should have received the correct data" do
       connect_and_subscribe
       expect(@packet).not_to be_nil
-    end
-
-    it "the client should have received the correct topic" do
-      connect_and_subscribe
       expect(@packet.topic).to eq('test')
-    end
-
-    it "the client should have received the correct payload" do
-      connect_and_subscribe
       expect(@packet.payload).to eq('hello test')
-    end
-
-    it "the client should have received a retained packet" do
-      connect_and_subscribe
-      expect(@packet.retain).to be_truthy
     end
 
     it "the server should not report any errors" do
@@ -152,22 +116,49 @@ describe "a client talking to a server" do
   end
 
   context "detects server not sending ping responses" do
-    def connect_and_timeout(keep_alive)
+    before do
       @server.respond_to_pings = false
-      @client.keep_alive = keep_alive
-      @client.connect
-      sleep(keep_alive * 3)
+      @client.keep_alive = 1
+      @client.ack_timeout = 0.5
     end
 
-    context "when keep-alive=1" do
-      it "the server should have received at least one ping" do
-        expect {
-          connect_and_timeout(1)
-        }.to raise_error(
-          MQTT::ProtocolException,
-          'No Ping Response received for 2 seconds'
-        )
+    it "the server should have received at least one ping" do
+      @client.reconnect_limit = 0
+      @client.connect
+      expect { @client.get }.to raise_error(MQTT::KeepAliveTimeout)
+      expect(@server.pings_received).to eq 1
+    end
+
+    it "reconnects on idle timeout" do
+      @server.just_one_connection = false
+
+      reconnect_count = 0
+      @client.on_reconnect do
+        reconnect_count += 1
       end
+      @client.connect
+      # it should reconnect after 1.5s
+      sleep 2
+      @client.disconnect
+      expect(reconnect_count).to eq 1
+    ensure
+      @server.stop
+    end
+
+    it "backs off if can't immediately reconnect" do
+      @client.reconnect_limit = 3
+
+      @client.connect
+
+      expect(TCPSocket).to receive(:new).exactly(3).times.and_raise("fail")
+
+      expect(@client).to receive(:sleep).with(5)
+      expect(@client).to receive(:sleep).with(25)
+
+      # the original error is returned
+      expect { @client.get }.to raise_error(MQTT::KeepAliveTimeout)
+    ensure
+      @server.stop
     end
   end
 

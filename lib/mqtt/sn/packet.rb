@@ -302,8 +302,8 @@ module MQTT
         attr_accessor :topic_name
 
         DEFAULTS = {
-          :qos => 0,
-          :retain => false,
+          qos: 0,
+          retain: false,
           :topic_name => nil
         }
 
@@ -397,8 +397,8 @@ module MQTT
         DEFAULTS = {
           :id => 0x00,
           :duplicate => false,
-          :qos => 0,
-          :retain => false,
+          qos: 0,
+          retain: false,
           :topic_id_type => :normal
         }
 
@@ -522,7 +522,7 @@ module MQTT
         attr_accessor :return_code
 
         DEFAULTS = {
-          :qos => 0,
+          qos: 0,
           :id => 0x00,
           :topic_id => 0x00,
           :topic_id_type => :normal
@@ -614,8 +614,8 @@ module MQTT
         attr_accessor :topic_name
 
         DEFAULTS = {
-          :qos => 0,
-          :retain => false,
+          qos: 0,
+          retain: false,
           :topic_name => nil
         }
 

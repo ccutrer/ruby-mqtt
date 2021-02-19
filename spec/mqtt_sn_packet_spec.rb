@@ -14,12 +14,12 @@ describe MQTT::SN::Packet do
     end
 
     it "should allow you to set the packet QoS level as a hash parameter" do
-      packet = MQTT::SN::Packet.new(:qos => 2)
+      packet = MQTT::SN::Packet.new(qos: 2)
       expect(packet.qos).to eq(2)
     end
 
     it "should allow you to set the packet retain flag as a hash parameter" do
-      packet = MQTT::SN::Packet.new(:retain => true)
+      packet = MQTT::SN::Packet.new(retain: true)
       expect(packet.retain).to be_truthy
     end
   end
@@ -414,12 +414,12 @@ describe MQTT::SN::Packet::Willtopic do
 
   describe "when serialising a packet" do
     it "should output the correct bytes for a Willtopic packet" do
-      packet = MQTT::SN::Packet::Willtopic.new(:topic_name => 'test', :qos => 0)
+      packet = MQTT::SN::Packet::Willtopic.new(:topic_name => 'test', qos: 0)
       expect(packet.to_s).to eq("\x07\x07\x00test")
     end
 
     it "should output the correct bytes for a Willtopic packet with QoS 1" do
-      packet = MQTT::SN::Packet::Willtopic.new(:topic_name => 'test', :qos => 1)
+      packet = MQTT::SN::Packet::Willtopic.new(:topic_name => 'test', qos: 1)
       expect(packet.to_s).to eq("\x07\x07\x20test")
     end
 
@@ -646,7 +646,7 @@ describe MQTT::SN::Packet::Publish do
   describe "when serialising a packet with a short topic id type" do
     it "should output the correct bytes for a publish packet of QoS -1" do
       packet = MQTT::SN::Packet::Publish.new(
-        :qos => -1,
+        qos: -1,
         :topic_id => 'tt',
         :topic_id_type => :short,
         :data => "Hello World"
@@ -656,7 +656,7 @@ describe MQTT::SN::Packet::Publish do
 
     it "should output the correct bytes for a publish packet of QoS 0" do
       packet = MQTT::SN::Packet::Publish.new(
-        :qos => 0,
+        qos: 0,
         :topic_id => 'tt',
         :topic_id_type => :short,
         :data => "Hello World"
@@ -666,7 +666,7 @@ describe MQTT::SN::Packet::Publish do
 
     it "should output the correct bytes for a publish packet of QoS 1" do
       packet = MQTT::SN::Packet::Publish.new(
-        :qos => 1,
+        qos: 1,
         :topic_id => 'tt',
         :topic_id_type => :short,
         :data => "Hello World"
@@ -676,7 +676,7 @@ describe MQTT::SN::Packet::Publish do
 
     it "should output the correct bytes for a publish packet of QoS 2" do
       packet = MQTT::SN::Packet::Publish.new(
-        :qos => 2,
+        qos: 2,
         :topic_id => 'tt',
         :topic_id_type => :short,
         :data => "Hello World"
@@ -1075,7 +1075,7 @@ describe MQTT::SN::Packet::Subscribe do
     it "should output the correct bytes for a Subscribe packet with a normal topic name" do
       packet = MQTT::SN::Packet::Subscribe.new(
         :duplicate => false,
-        :qos => 0,
+        qos: 0,
         :id => 0x02,
         :topic_name => 'test'
       )
@@ -1085,7 +1085,7 @@ describe MQTT::SN::Packet::Subscribe do
     it "should output the correct bytes for a Subscribe packet with a short topic name" do
       packet = MQTT::SN::Packet::Subscribe.new(
         :duplicate => false,
-        :qos => 0,
+        qos: 0,
         :id => 0x04,
         :topic_id_type => :short,
         :topic_name => 'TT'
@@ -1096,7 +1096,7 @@ describe MQTT::SN::Packet::Subscribe do
     it "should output the correct bytes for a Subscribe packet with a short topic id" do
       packet = MQTT::SN::Packet::Subscribe.new(
         :duplicate => false,
-        :qos => 0,
+        qos: 0,
         :id => 0x04,
         :topic_id_type => :short,
         :topic_id => 'TT'
@@ -1107,7 +1107,7 @@ describe MQTT::SN::Packet::Subscribe do
     it "should output the correct bytes for a Subscribe packet with a predefined topic id" do
       packet = MQTT::SN::Packet::Subscribe.new(
         :duplicate => false,
-        :qos => 0,
+        qos: 0,
         :id => 0x05,
         :topic_id_type => :predefined,
         :topic_id => 16
@@ -1225,7 +1225,7 @@ describe MQTT::SN::Packet::Suback do
     it "should output the correct bytes for a normal topic id" do
       packet = MQTT::SN::Packet::Suback.new(
         :id => 0x02,
-        :qos => 0,
+        qos: 0,
         :topic_id => 0x01,
         :return_code => 0x03
       )
@@ -1235,7 +1235,7 @@ describe MQTT::SN::Packet::Suback do
     it "should output the correct bytes for a short topic id" do
       packet = MQTT::SN::Packet::Suback.new(
         :id => 0x03,
-        :qos => 0,
+        qos: 0,
         :topic_id => 'tt',
         :topic_id_type => :short,
         :return_code => 0x03
@@ -1308,7 +1308,7 @@ describe MQTT::SN::Packet::Unsubscribe do
       packet = MQTT::SN::Packet::Unsubscribe.new(
         :id => 0x02,
         :duplicate => false,
-        :qos => 0,
+        qos: 0,
         :topic_name => 'test'
       )
       expect(packet.to_s).to eq("\x09\x14\x00\x00\x02test")
@@ -1317,7 +1317,7 @@ describe MQTT::SN::Packet::Unsubscribe do
     it "should output the correct bytes for a Unsubscribe packet with a short topic name" do
       packet = MQTT::SN::Packet::Unsubscribe.new(
         :duplicate => false,
-        :qos => 0,
+        qos: 0,
         :id => 0x04,
         :topic_id_type => :short,
         :topic_name => 'TT'
@@ -1328,7 +1328,7 @@ describe MQTT::SN::Packet::Unsubscribe do
     it "should output the correct bytes for a Unsubscribe packet with a short topic id" do
       packet = MQTT::SN::Packet::Unsubscribe.new(
         :duplicate => false,
-        :qos => 0,
+        qos: 0,
         :id => 0x04,
         :topic_id_type => :short,
         :topic_id => 'TT'
@@ -1339,7 +1339,7 @@ describe MQTT::SN::Packet::Unsubscribe do
     it "should output the correct bytes for a Unsubscribe packet with a predefined topic id" do
       packet = MQTT::SN::Packet::Unsubscribe.new(
         :duplicate => false,
-        :qos => 0,
+        qos: 0,
         :id => 0x05,
         :topic_id_type => :predefined,
         :topic_id => 16
@@ -1573,12 +1573,12 @@ describe MQTT::SN::Packet::Willtopicupd do
 
   describe "when serialising a packet" do
     it "should output the correct bytes for a Willtopicupd packet" do
-      packet = MQTT::SN::Packet::Willtopicupd.new(:topic_name => 'test', :qos => 0)
+      packet = MQTT::SN::Packet::Willtopicupd.new(:topic_name => 'test', qos: 0)
       expect(packet.to_s).to eq("\x07\x1A\x00test")
     end
 
     it "should output the correct bytes for a Willtopic packet with QoS 1" do
-      packet = MQTT::SN::Packet::Willtopicupd.new(:topic_name => 'test', :qos => 1)
+      packet = MQTT::SN::Packet::Willtopicupd.new(:topic_name => 'test', qos: 1)
       expect(packet.to_s).to eq("\x07\x1A\x20test")
     end
 

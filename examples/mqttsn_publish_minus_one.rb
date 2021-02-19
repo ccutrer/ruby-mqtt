@@ -17,6 +17,6 @@ socket << MQTT::SN::Packet::Publish.new(
   :topic_id => 'TT',
   :topic_id_type => :short,
   :data => "The time is: #{Time.now}",
-  :qos => -1
+  qos: -1
 )
 socket.close

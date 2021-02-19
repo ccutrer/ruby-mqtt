@@ -67,14 +67,11 @@ module MQTT
     # If the Will message should be retain by the server after it is sent
     attr_accessor :will_retain
 
-    # Last ping response time
-    attr_reader :last_ping_response
-
     # Default attribute values
     ATTR_DEFAULTS = {
       host: nil,
       port: nil,
-      version: '3.1.0',
+      version: '3.1.1',
       keep_alive: 15,
       clean_session: true,
       client_id: nil,
@@ -230,7 +227,7 @@ module MQTT
     #
     # If a block is given, then yield to that block and then disconnect again.
     def connect
-      if @connected
+      if connected?
         yield(self) if block_given?
         return
       end
@@ -256,10 +253,22 @@ module MQTT
       end
     end
 
+    # wait until all messages have been sent
+    def flush
+      raise NotConnectedException unless connected?
+
+      queue = Queue.new
+      @write_queue << queue
+      queue.pop
+      nil
+    end
+
     # Disconnect from the MQTT server.
     #
     # If you don't want to say goodbye to the server, set send_msg to false.
     def disconnect(send_msg = true)
+      return unless connected?
+
       @read_queue << [ConnectionClosedException.new, current_time]
       # Stop reading packets from the socket first
       @connection_mutex.synchronize do
@@ -283,7 +292,7 @@ module MQTT
 
       if send_msg
         packet = MQTT::Packet::Disconnect.new
-        @socket.write(packet.to_s)
+        @socket.write(packet.to_s) rescue nil
       end
       @socket.close
       @socket = nil
@@ -418,11 +427,11 @@ module MQTT
 
     # Return the next message received from the MQTT server.
     #
-    # The method either returns the topic and message as an array:
-    #   topic,message = client.get
+    # The method either returns the Publish packet:
+    #   packet = client.get
     #
     # Or can be used with a block to keep processing messages:
-    #   client.get do |topic,payload|
+    #   client.get do |packet|
     #     # Do stuff here
     #   end
     #
@@ -434,17 +443,17 @@ module MQTT
         packet = @read_queue.pop
         if packet.is_a?(Array) && packet.last >= loop_start
           e = packet.first
-          e.set_backtrace(e.backtrace + ["<from MQTT worker thread>"] + caller)
+          e.set_backtrace((e.backtrace || []) + ["<from MQTT worker thread>"] + caller)
           raise e
         end
         next unless packet.is_a?(Packet)
 
         unless block_given?
           puback_packet(packet) if packet.qos > 0
-          return packet.topic, packet.payload
+          return packet
         end
 
-        yield(packet.topic, packet.payload)
+        yield packet
         puback_packet(packet) if packet.qos > 0
       end
     end
@@ -511,6 +520,11 @@ module MQTT
 
       @write_thread = Thread.new do
         while (packet = @write_queue.pop)
+          # flush command
+          if packet.is_a?(Queue)
+            packet << :flushed
+            next
+          end
           @socket.write(packet.to_s)
         end
       rescue => e
@@ -519,20 +533,18 @@ module MQTT
       end
 
       @read_thread = Thread.new do
-        loop do
-          receive_packet
-        end
-      rescue => e
-        reconnect(e)
+        receive_packet while connected?
       end
     end
 
     def reconnect(exception)
+      should_exit = nil
       @connection_mutex.synchronize do
         @socket&.close
         @socket = nil
         @read_thread&.kill if Thread.current != @read_thread
         @write_thread&.kill if Thread.current != @write_thread
+        should_exit = Thread.current == @read_thread
         @read_thread = @write_thread = nil
 
         retries = 0
@@ -542,7 +554,7 @@ module MQTT
           @socket&.close
           @socket = nil
 
-          if (retries += 1) > @reconnect_limit
+          if (retries += 1) < @reconnect_limit
             sleep @reconnect_backoff ** retries
             retry
           end
@@ -568,6 +580,7 @@ module MQTT
         @read_queue << [e, current_time]
         disconnect
       end
+      Thread.exit if should_exit
     end
 
     # Try to read a packet from the server
@@ -591,6 +604,8 @@ module MQTT
       end
 
       handle_keep_alives
+    rescue => e
+      reconnect(e)
     end
 
     def register_for_ack(packet)
@@ -686,16 +701,15 @@ module MQTT
     end
 
     def handle_keep_alives
-      return unless @keep_alive
+      return unless @keep_alive && @keep_alive > 0
 
       current_time = self.current_time
       if current_time >= @last_packet_received_at + @keep_alive && !@keep_alive_sent
         packet = MQTT::Packet::Pingreq.new
-        #send_packet(packet)
+        send_packet(packet)
         @keep_alive_sent = true
       elsif current_time >= @last_packet_received_at + @keep_alive + @ack_timeout
-        reconnect(KeepAliveTimeout.new)
-        Thread.exit
+        raise KeepAliveTimeout
       end
     end
 
@@ -741,8 +755,8 @@ module MQTT
       {
         host: uri.host,
         port: uri.port || nil,
-        username: uri.user ? URI.unescape(uri.user) : nil,
-        password: uri.password ? URI.unescape(uri.password) : nil,
+        username: uri.user ? URI::Parser.new.unescape(uri.user) : nil,
+        password: uri.password ? URI::Parser.new.unescape(uri.password) : nil,
         ssl: ssl
       }
     end
