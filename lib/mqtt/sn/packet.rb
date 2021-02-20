@@ -1,4 +1,5 @@
 # encoding: BINARY
+# frozen_string_literal: true
 
 module MQTT
   module SN
@@ -12,7 +13,7 @@ module MQTT
       attr_accessor :clean_session # When true, subscriptions are deleted after disconnect
       attr_accessor :topic_id_type # One of :normal, :predefined or :short
 
-      DEFAULTS = {}
+      DEFAULTS = {}.freeze
 
       # Parse buffer into new packet object
       def self.parse(buffer)
@@ -21,14 +22,10 @@ module MQTT
         length, type_id, body = buffer.unpack('xnCa*') if length == 1
 
         # Double-check the length
-        if buffer.length != length
-          raise ProtocolException, 'Length of packet is not the same as the length header'
-        end
+        raise ProtocolException, 'Length of packet is not the same as the length header' if buffer.length != length
 
         packet_class = PACKET_TYPES[type_id]
-        if packet_class.nil?
-          raise ProtocolException, "Invalid packet type identifier: #{type_id}"
-        end
+        raise ProtocolException, "Invalid packet type identifier: #{type_id}" if packet_class.nil?
 
         # Create a new packet object
         packet = packet_class.new
@@ -51,7 +48,7 @@ module MQTT
       # Get the identifer for this packet type
       def type_id
         PACKET_TYPES.each_pair do |key, value|
-          return key if self.class == value
+          return key if instance_of?(value)
         end
         raise "Invalid packet type: #{self.class}"
       end
@@ -127,14 +124,12 @@ module MQTT
 
       def encode_topic_id
         if topic_id_type == :short
-          unless topic_id.is_a?(String)
-            raise "topic_id must be an String for type #{topic_id_type}"
-          end
+          raise "topic_id must be an String for type #{topic_id_type}" unless topic_id.is_a?(String)
+
           (topic_id[0].ord << 8) + topic_id[1].ord
         else
-          unless topic_id.is_a?(Integer)
-            raise "topic_id must be an Integer for type #{topic_id_type}"
-          end
+          raise "topic_id must be an Integer for type #{topic_id_type}" unless topic_id.is_a?(Integer)
+
           topic_id
         end
       end
@@ -175,7 +170,7 @@ module MQTT
           self.topic_name = topic
           self.topic_id = topic
         when :predefined
-          self.topic_id = topic.unpack('n').first
+          self.topic_id = topic.unpack1('n')
         end
       end
 
@@ -186,7 +181,7 @@ module MQTT
         DEFAULTS = {
           gateway_id: 0x00,
           duration: 0
-        }
+        }.freeze
 
         def encode_body
           [gateway_id, duration].pack('Cn')
@@ -199,9 +194,10 @@ module MQTT
 
       class Searchgw < Packet
         attr_accessor :radius
+
         DEFAULTS = {
           radius: 1
-        }
+        }.freeze
 
         def encode_body
           [radius].pack('C')
@@ -213,12 +209,12 @@ module MQTT
       end
 
       class Gwinfo < Packet
-        attr_accessor :gateway_id
-        attr_accessor :gateway_address
+        attr_accessor :gateway_id, :gateway_address
+
         DEFAULTS = {
           gateway_id: 0,
           gateway_address: nil
-        }
+        }.freeze
 
         def encode_body
           [gateway_id, gateway_address].pack('Ca*')
@@ -242,7 +238,7 @@ module MQTT
           request_will: false,
           clean_session: true,
           keep_alive: 15
-        }
+        }.freeze
 
         # Get serialisation of packet's body
         def encode_body
@@ -256,9 +252,7 @@ module MQTT
         def parse_body(buffer)
           flags, protocol_id, self.keep_alive, self.client_id = buffer.unpack('CCna*')
 
-          if protocol_id != 0x01
-            raise ProtocolException, "Unsupported protocol ID number: #{protocol_id}"
-          end
+          raise ProtocolException, "Unsupported protocol ID number: #{protocol_id}" if protocol_id != 0x01
 
           parse_flags(flags)
         end
@@ -290,7 +284,7 @@ module MQTT
         end
 
         def parse_body(buffer)
-          self.return_code = buffer.unpack('C')[0]
+          self.return_code = buffer.unpack1('C')
         end
       end
 
@@ -305,7 +299,7 @@ module MQTT
           qos: 0,
           retain: false,
           topic_name: nil
-        }
+        }.freeze
 
         def encode_body
           if topic_name.nil? || topic_name.empty?
@@ -350,7 +344,7 @@ module MQTT
         DEFAULTS = {
           id: 0x00,
           topic_id_type: :normal
-        }
+        }.freeze
 
         def encode_body
           raise 'id must be an Integer' unless id.is_a?(Integer)
@@ -374,7 +368,7 @@ module MQTT
           id: 0x00,
           topic_id: 0x00,
           topic_id_type: :normal
-        }
+        }.freeze
 
         def encode_body
           raise 'id must be an Integer' unless id.is_a?(Integer)
@@ -400,7 +394,7 @@ module MQTT
           qos: 0,
           retain: false,
           topic_id_type: :normal
-        }
+        }.freeze
 
         def encode_body
           raise 'id must be an Integer' unless id.is_a?(Integer)
@@ -424,7 +418,7 @@ module MQTT
           id: 0x00,
           topic_id: nil,
           return_code: 0x00
-        }
+        }.freeze
 
         def encode_body
           raise 'id must be an Integer' unless id.is_a?(Integer)
@@ -444,7 +438,7 @@ module MQTT
 
         DEFAULTS = {
           id: 0x00
-        }
+        }.freeze
 
         def encode_body
           raise 'id must be an Integer' unless id.is_a?(Integer)
@@ -462,7 +456,7 @@ module MQTT
 
         DEFAULTS = {
           id: 0x00
-        }
+        }.freeze
 
         def encode_body
           raise 'id must be an Integer' unless id.is_a?(Integer)
@@ -480,7 +474,7 @@ module MQTT
 
         DEFAULTS = {
           id: 0x00
-        }
+        }.freeze
 
         def encode_body
           raise 'id must be an Integer' unless id.is_a?(Integer)
@@ -501,7 +495,7 @@ module MQTT
         DEFAULTS = {
           id: 0x00,
           topic_id_type: :normal
-        }
+        }.freeze
 
         def encode_body
           raise 'id must be an Integer' unless id.is_a?(Integer)
@@ -526,7 +520,7 @@ module MQTT
           id: 0x00,
           topic_id: 0x00,
           topic_id_type: :normal
-        }
+        }.freeze
 
         def encode_body
           raise 'id must be an Integer' unless id.is_a?(Integer)
@@ -549,7 +543,7 @@ module MQTT
         DEFAULTS = {
           id: 0x00,
           topic_id_type: :normal
-        }
+        }.freeze
 
         def encode_body
           raise 'id must be an Integer' unless id.is_a?(Integer)
@@ -569,7 +563,7 @@ module MQTT
 
         DEFAULTS = {
           id: 0x00
-        }
+        }.freeze
 
         def encode_body
           raise 'id must be an Integer' unless id.is_a?(Integer)
@@ -578,7 +572,7 @@ module MQTT
         end
 
         def parse_body(buffer)
-          self.id = buffer.unpack('n').first
+          self.id = buffer.unpack1('n')
         end
       end
 
@@ -595,7 +589,7 @@ module MQTT
 
         DEFAULTS = {
           duration: nil
-        }
+        }.freeze
 
         def encode_body
           if duration.nil? || duration.zero?
@@ -606,7 +600,7 @@ module MQTT
         end
 
         def parse_body(buffer)
-          self.duration = buffer.length == 2 ? buffer.unpack('n').first : nil
+          self.duration = buffer.length == 2 ? buffer.unpack1('n') : nil
         end
       end
 
@@ -617,7 +611,7 @@ module MQTT
           qos: 0,
           retain: false,
           topic_name: nil
-        }
+        }.freeze
 
         def encode_body
           if topic_name.nil? || topic_name.empty?
@@ -642,7 +636,7 @@ module MQTT
 
         DEFAULTS = {
           return_code: 0x00
-        }
+        }.freeze
 
         def encode_body
           raise 'return_code must be an Integer' unless return_code.is_a?(Integer)
@@ -672,7 +666,7 @@ module MQTT
 
         DEFAULTS = {
           return_code: 0x00
-        }
+        }.freeze
 
         def encode_body
           raise 'return_code must be an Integer' unless return_code.is_a?(Integer)
@@ -715,6 +709,6 @@ module MQTT
       0x1b => MQTT::SN::Packet::Willtopicresp,
       0x1c => MQTT::SN::Packet::Willmsgupd,
       0x1d => MQTT::SN::Packet::Willmsgresp
-    }
+    }.freeze
   end
 end

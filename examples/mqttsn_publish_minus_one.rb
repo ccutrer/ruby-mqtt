@@ -1,15 +1,16 @@
 #!/usr/bin/env ruby
+# frozen_string_literal: true
+
 #
 # Send a MQTT-SN Publish packet at QoS -1
 # over UDP to a MQTT-SN server
 #
 
-$:.unshift File.dirname(__FILE__)+'/../lib'
+$LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
 
 require 'rubygems'
 require 'socket'
 require 'mqtt'
-
 
 socket = UDPSocket.new
 socket.connect('localhost', MQTT::SN::DEFAULT_PORT)

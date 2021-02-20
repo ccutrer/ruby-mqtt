@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module MQTT
   # Class for implementing a proxy to filter/mangle MQTT packets.
   class Proxy
@@ -47,7 +49,7 @@ module MQTT
       # Setup a logger
       @logger = args[:logger]
       if @logger.nil?
-        @logger = Logger.new(STDOUT)
+        @logger = Logger.new($stdout)
         @logger.level = Logger::INFO
       end
 
@@ -69,8 +71,8 @@ module MQTT
           server_socket = TCPSocket.new(@server_host, @server_port)
           begin
             process_packets(client_socket, server_socket)
-          rescue Exception => exp
-            logger.error exp.to_s
+          rescue => e
+            logger.error e.to_s
           end
           logger.info "Disconnected: #{client_socket.peeraddr.join(':')}"
           server_socket.close

@@ -1,27 +1,27 @@
-Style/Documentation:
+AllCops:
+  TargetRubyVersion: 2.5
+  NewCops: enable
+  Exclude:
+    - 'bin/*'
+
+Layout/SpaceAroundOperators:
+  EnforcedStyleForExponentOperator: space
+Lint/InheritException:
   Enabled: false
-Style/HashSyntax:
-  Enabled: false        # Disabled to support older ruby versions
-Style/MutableConstant:
+Naming/FileName:
+  Exclude: [ lib/mqtt-ccutrer.rb ]
+Style/Documentation:
   Enabled: false
 Style/FormatString:
   Enabled: false
-
-Lint/RescueException:
+Style/AccessorGrouping:
   Enabled: false
-Lint/InheritException:
+Style/NumericPredicate:
+  Enabled: false
+Style/RescueStandardError:
+  EnforcedStyle: implicit
+Style/StringConcatenation:
   Enabled: false
 
-# TODO: Enable this and fix offenses
 Metrics:
   Enabled: false
-
-AllCops:
-  Include:
-    - 'lib/**/*'
-  Exclude:
-    - 'Gemfile'
-    - 'Rakefile'
-    - 'mqtt.gemspec'
-    - 'examples/**'
-    - 'spec/**/*'

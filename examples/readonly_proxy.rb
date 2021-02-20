@@ -1,14 +1,15 @@
 #!/usr/bin/env ruby
+# frozen_string_literal: true
 
-$:.unshift File.dirname(__FILE__)+'/../lib'
+$LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
 
 require 'mqtt'
 
 proxy = MQTT::Proxy.new(
-    local_host: '0.0.0.0',
-    local_port: 1883,
-    server_host: 'test.mosquitto.org',
-    server_port: 1883
+  local_host: '0.0.0.0',
+  local_port: 1883,
+  server_host: 'test.mosquitto.org',
+  server_port: 1883
 )
 
 proxy.client_filter = lambda { |packet|

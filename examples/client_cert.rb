@@ -1,15 +1,16 @@
 #!/usr/bin/env ruby
+# frozen_string_literal: true
+
 #
 # Connect to a MQTT server using SSL/TLS Client Certificate,
 # send a single message and then receive it back
 #
 
-$:.unshift File.dirname(__FILE__)+'/../lib'
+$LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
 
 require 'rubygems'
 require 'openssl'
 require 'mqtt'
-
 
 # List the supported SSL/TLS protocol versions
 p OpenSSL::SSL::SSLContext::METHODS
@@ -24,7 +25,7 @@ client.connect do
   client.subscribe('test')
 
   # Send a message
-  client.publish('test', "hello world")
+  client.publish('test', 'hello world')
 
   # If you pass a block to the get method, then it will loop
   packet = client.get

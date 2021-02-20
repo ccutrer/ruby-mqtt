@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 autoload :OpenSSL, 'openssl'
 autoload :SecureRandom, 'securerandom'
 autoload :URI, 'uri'
@@ -86,7 +88,7 @@ module MQTT
       will_qos: 0,
       will_retain: false,
       ssl: false
-    }
+    }.freeze
 
     # Create and connect a new MQTT Client
     #
@@ -129,28 +131,22 @@ module MQTT
     #  client = MQTT::Client.new(host: 'myserver.example.com')
     #  client = MQTT::Client.new(host: 'myserver.example.com', keep_alive: 30)
     #
-    def initialize(*args)
-      attributes = args.last.is_a?(Hash) ? args.pop : {}
-
+    def initialize(host = nil, port = nil, **attributes)
       # Set server URI from environment if present
-      attributes.merge!(parse_uri(ENV['MQTT_SERVER'])) if args.length.zero? && ENV['MQTT_SERVER']
+      if host.nil? && port.nil? && attributes.empty? && ENV['MQTT_SERVER']
+        attributes.merge!(parse_uri(ENV['MQTT_SERVER']))
+      end
 
-      if args.length >= 1
-        case args[0]
-        when URI
-          attributes.merge!(parse_uri(args[0]))
-        when %r{^mqtts?://}
-          attributes.merge!(parse_uri(args[0]))
+      if host
+        case host
+        when URI, %r{^mqtts?://}
+          attributes.merge!(parse_uri(host))
         else
-          attributes[:host] = args[0]
+          attributes[:host] = host
         end
       end
 
-      if args.length >= 2
-        attributes[:port] = args[1] unless args[1].nil?
-      end
-
-      raise ArgumentError, 'Unsupported number of arguments' if args.length >= 3
+      attributes[:port] = port unless port.nil?
 
       # Merge arguments with default values for attributes
       ATTR_DEFAULTS.merge(attributes).each_pair do |k, v|
@@ -266,7 +262,7 @@ module MQTT
     # Disconnect from the MQTT server.
     #
     # If you don't want to say goodbye to the server, set send_msg to false.
-    def disconnect(send_msg = true)
+    def disconnect(send_msg: true)
       return unless connected?
 
       @read_queue << [ConnectionClosedException.new, current_time]
@@ -292,7 +288,11 @@ module MQTT
 
       if send_msg
         packet = MQTT::Packet::Disconnect.new
-        @socket.write(packet.to_s) rescue nil
+        begin
+          @socket.write(packet.to_s)
+        rescue
+          nil
+        end
       end
       @socket.close
       @socket = nil
@@ -343,7 +343,9 @@ module MQTT
 
     # Publish a message on a particular topic to the MQTT server.
     def publish(topics, payload = nil, retain: false, qos: 0)
-      raise ArgumentError, 'Payload cannot be passed if passing a hash for topics and payloads' if topics.is_a?(Hash) && !payload.nil?
+      if topics.is_a?(Hash) && !payload.nil?
+        raise ArgumentError, 'Payload cannot be passed if passing a hash for topics and payloads'
+      end
       raise NotConnectedException unless connected?
 
       if @batch_publish && qos != 0
@@ -437,13 +439,13 @@ module MQTT
     #
     def get
       raise NotConnectedException unless connected?
-      
+
       loop_start = current_time
       loop do
         packet = @read_queue.pop
         if packet.is_a?(Array) && packet.last >= loop_start
           e = packet.first
-          e.set_backtrace((e.backtrace || []) + ["<from MQTT worker thread>"] + caller)
+          e.set_backtrace((e.backtrace || []) + ['<from MQTT worker thread>'] + caller)
           raise e
         end
         next unless packet.is_a?(Packet)
@@ -588,13 +590,11 @@ module MQTT
     def receive_packet
       # Poll socket - is there data waiting?
       timeout = next_timeout
-      read_ready, _ = IO.select([@socket, @wake_up_pipe[0]], [], [], timeout)
+      read_ready, = IO.select([@socket, @wake_up_pipe[0]], [], [], timeout)
 
       # we just needed to break out of our select to set up a new timeout;
       # we can discard the actual contents
-      if read_ready&.include?(@wake_up_pipe[0])
-        @wake_up_pipe[0].readpartial(4096)
-      end
+      @wake_up_pipe[0].readpartial(4096) if read_ready&.include?(@wake_up_pipe[0])
 
       handle_timeouts
 
@@ -659,11 +659,9 @@ module MQTT
       @acks_mutex.synchronize do
         current_time = self.current_time
         @acks.each_value do |pending_ack|
-          if pending_ack.timeout_at <= current_time
-            resend(pending_ack)
-          else
-            break
-          end
+          break unless pending_ack.timeout_at <= current_time
+
+          resend(pending_ack)
         end
       end
     end
@@ -676,11 +674,9 @@ module MQTT
         return
       end
       # timed out, or simple re-send
-      if @acks.first.first == packet.id
-        @wake_up_pipe[1].write('z')
-      end
+      @wake_up_pipe[1].write('z') if @acks.first.first == packet.id
       pending_ack.timeout_at = current_time + @ack_timeout
-      # TODO: set re-send flag
+      packet.duplicate = true
       send_packet(packet)
     end
 
@@ -744,13 +740,14 @@ module MQTT
 
     def parse_uri(uri)
       uri = URI.parse(uri) unless uri.is_a?(URI)
-      if uri.scheme == 'mqtt'
-        ssl = false
-      elsif uri.scheme == 'mqtts'
-        ssl = true
-      else
-        raise 'Only the mqtt:// and mqtts:// schemes are supported'
-      end
+      ssl = case uri.scheme
+            when 'mqtt'
+              false
+            when 'mqtts'
+              true
+            else
+              raise 'Only the mqtt:// and mqtts:// schemes are supported'
+            end
 
       {
         host: uri.host,

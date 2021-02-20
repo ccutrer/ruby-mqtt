@@ -1,10 +1,12 @@
 #!/usr/bin/env ruby
+# frozen_string_literal: true
+
 #
 # Connect to a MQTT server, subscribe to all topics
 # and then loop, displaying the packets received.
 #
 
-$:.unshift File.dirname(__FILE__)+'/../lib'
+$LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
 
 require 'rubygems'
 require 'mqtt'
