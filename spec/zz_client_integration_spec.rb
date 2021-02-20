@@ -159,5 +159,22 @@ describe 'a client talking to a server' do
     ensure
       @server.stop
     end
+
+    it 'includes the connack packet in on_reconnect callback' do
+      @server.just_one_connection = false
+
+      reconnect_count = 0
+      @client.on_reconnect do |connack|
+        expect(connack).to be_a(MQTT::Packet::Connack)
+        reconnect_count += 1
+      end
+      @client.connect
+      # it should reconnect after 1.5s
+      sleep 2
+      @client.disconnect
+      expect(reconnect_count).to eq 1
+    ensure
+      @server.stop
+    end
   end
 end

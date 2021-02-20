@@ -577,7 +577,11 @@ module MQTT
       end
 
       begin
-        @on_reconnect&.call
+        if @on_reconnect&.arity == 0
+          @on_reconnect.call
+        else
+          @on_reconnect&.call(@connack)
+        end
       rescue => e
         @read_queue << [e, current_time]
         disconnect
@@ -730,6 +734,7 @@ module MQTT
         end
         @last_packet_received_at = current_time
         @keep_alive_sent = false
+        @connack = packet
       end
     end
 
