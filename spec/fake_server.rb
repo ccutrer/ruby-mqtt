@@ -16,8 +16,6 @@
 #   * Only handles a single connection at a time
 #
 
-$LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
-
 require 'logger'
 require 'socket'
 require 'mqtt'

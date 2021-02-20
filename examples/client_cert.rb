@@ -6,9 +6,6 @@
 # send a single message and then receive it back
 #
 
-$LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
-
-require 'rubygems'
 require 'openssl'
 require 'mqtt'
 

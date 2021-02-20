@@ -29,7 +29,6 @@ Quick Start
 -----------
 
 ~~~ ruby
-require 'rubygems'
 require 'mqtt'
 
 # Publish example

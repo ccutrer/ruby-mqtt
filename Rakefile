@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-$LOAD_PATH.push File.expand_path(__dir__)
-
-require 'rubygems'
 require 'yard'
 require 'rspec/core/rake_task'
 require 'bundler/gem_tasks'
@@ -24,9 +21,6 @@ namespace :doc do
     spec.rspec_opts = ['--format', 'html', '-o', 'doc/spec.html']
   end
 end
-
-task test: :spec
-task specs: :spec
 
 require 'rubocop/rake_task'
 

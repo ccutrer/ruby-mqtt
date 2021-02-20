@@ -6,9 +6,6 @@
 # an environment variable
 #
 
-$LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
-
-require 'rubygems'
 require 'mqtt'
 
 # This environment variable may be set by the shell

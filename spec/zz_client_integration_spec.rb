@@ -1,13 +1,11 @@
 # frozen_string_literal: true
 
-$LOAD_PATH.unshift(File.dirname(__FILE__))
-
 require 'spec_helper'
 require 'mqtt'
 require 'fake_server'
 
 describe 'a client talking to a server' do
-  before(:each) do
+  before do
     @error_log = StringIO.new
     @server = MQTT::FakeServer.new
     @server.just_one_connection = true
@@ -19,7 +17,7 @@ describe 'a client talking to a server' do
     @client = MQTT::Client.new(@server.address, @server.port)
   end
 
-  after(:each) do
+  after do
     @client.disconnect
     @server.stop
   end

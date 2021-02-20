@@ -6,9 +6,6 @@
 # and then loop, displaying any messages received.
 #
 
-$LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
-
-require 'rubygems'
 require 'mqtt'
 
 MQTT::Client.connect('test.mosquitto.org') do |client|

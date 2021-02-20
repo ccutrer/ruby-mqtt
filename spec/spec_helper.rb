@@ -1,11 +1,6 @@
 # frozen_string_literal: true
 
-$LOAD_PATH.unshift(File.join(File.dirname(__FILE__), '..', 'lib'))
-
-require 'rubygems'
-require 'bundler'
-
-Bundler.require(:default, :development)
+require 'simplecov'
 
 SimpleCov.start do
   add_filter '/spec/'

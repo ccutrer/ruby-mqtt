@@ -4,9 +4,6 @@
 #
 # Authenticate to a server, subscribe to a topic and publish
 
-$LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
-
-require 'rubygems'
 require 'mqtt'
 
 MQTT::Client.connect(
