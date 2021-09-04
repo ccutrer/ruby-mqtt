@@ -661,9 +661,9 @@ module MQTT
 
     def handle_timeouts
       @acks_mutex.synchronize do
-        current_time = self.current_time
+        current_time_local = current_time
         @acks.each_value do |pending_ack|
-          break unless pending_ack.timeout_at <= current_time
+          break unless pending_ack.timeout_at <= current_time_local
 
           resend(pending_ack)
         end
@@ -696,19 +696,19 @@ module MQTT
 
       next_ping = @last_packet_received_at + @keep_alive if @keep_alive && !@keep_alive_sent
       next_ping = @last_packet_received_at + @keep_alive + @ack_timeout if @keep_alive && @keep_alive_sent
-      current_time = self.current_time
-      [([timeout_from_acks, next_ping].compact.min || current_time) - current_time, 0].max
+      current_time_local = current_time
+      [([timeout_from_acks, next_ping].compact.min || current_time_local) - current_time_local, 0].max
     end
 
     def handle_keep_alives
       return unless @keep_alive && @keep_alive > 0
 
-      current_time = self.current_time
-      if current_time >= @last_packet_received_at + @keep_alive && !@keep_alive_sent
+      current_time_local = current_time
+      if current_time_local >= @last_packet_received_at + @keep_alive && !@keep_alive_sent
         packet = MQTT::Packet::Pingreq.new
         send_packet(packet)
         @keep_alive_sent = true
-      elsif current_time >= @last_packet_received_at + @keep_alive + @ack_timeout
+      elsif current_time_local >= @last_packet_received_at + @keep_alive + @ack_timeout
         raise KeepAliveTimeout
       end
     end
