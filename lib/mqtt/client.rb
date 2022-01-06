@@ -173,6 +173,9 @@ module MQTT
       @wake_up_pipe = IO.pipe
 
       @connected = false
+      @keep_alive_sent = false
+      @last_packet_id = 0
+      @batch_publish = false
     end
 
     # Get the OpenSSL context, that is used if SSL/TLS is enabled
@@ -514,6 +517,7 @@ module MQTT
 
       # Send packet
       @socket.write(packet.to_s)
+      @last_packet_sent_at = current_time
 
       # Receive response
       receive_connack
@@ -528,6 +532,7 @@ module MQTT
             next
           end
           @socket.write(packet.to_s)
+          @last_packet_sent_at = current_time
         end
       rescue => e
         @write_queue << packet if packet
@@ -643,7 +648,7 @@ module MQTT
         # Add to queue
         @read_queue.push(packet)
       when MQTT::Packet::Pingresp
-        # do nothing; setting @last_packet_received_at already handled it
+        # do nothing; setting @keep_alive_sent already handled it
       when MQTT::Packet::Puback,
         MQTT::Packet::Suback,
         MQTT::Packet::Unsuback
@@ -694,8 +699,13 @@ module MQTT
       end
       return nil if timeout_from_acks.nil? && @keep_alive.nil?
 
-      next_ping = @last_packet_received_at + @keep_alive if @keep_alive && !@keep_alive_sent
-      next_ping = @last_packet_received_at + @keep_alive + @ack_timeout if @keep_alive && @keep_alive_sent
+      if @keep_alive
+        next_ping = if @keep_alive_sent
+                      @last_packet_received_at + @keep_alive + @ack_timeout
+                    else
+                      @last_packet_sent_at + @keep_alive
+                    end
+      end
       current_time_local = current_time
       [([timeout_from_acks, next_ping].compact.min || current_time_local) - current_time_local, 0].max
     end
@@ -704,7 +714,7 @@ module MQTT
       return unless @keep_alive && @keep_alive > 0
 
       current_time_local = current_time
-      if current_time_local >= @last_packet_received_at + @keep_alive && !@keep_alive_sent
+      if current_time_local >= @last_packet_sent_at + @keep_alive && !@keep_alive_sent
         packet = MQTT::Packet::Pingreq.new
         send_packet(packet)
         @keep_alive_sent = true
@@ -764,7 +774,7 @@ module MQTT
     end
 
     def next_packet_id
-      @last_packet_id = (@last_packet_id || 0).next
+      @last_packet_id = @last_packet_id.next
       @last_packet_id = 1 if @last_packet_id > 0xffff
       @last_packet_id
     end

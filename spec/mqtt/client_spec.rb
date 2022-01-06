@@ -589,6 +589,7 @@ describe MQTT::Client do
       end
       start = client.send(:current_time)
       client.instance_variable_set(:@last_packet_received_at, start)
+      client.instance_variable_set(:@last_packet_sent_at, start)
       expect { client.publish('topic', 'payload', qos: 1) }.to raise_error(MQTT::ResendLimitExceededException)
       elapsed = client.send(:current_time) - start
       t.kill
@@ -613,6 +614,7 @@ describe MQTT::Client do
       end
       start = client.send(:current_time)
       client.instance_variable_set(:@last_packet_received_at, start)
+      client.instance_variable_set(:@last_packet_sent_at, start)
       expect { client.publish('topic', 'payload', qos: 1) }.to raise_error(MQTT::ResendLimitExceededException)
       elapsed = client.send(:current_time) - start
       t.kill
@@ -838,6 +840,7 @@ describe MQTT::Client do
     before do
       client.instance_variable_set(:@socket, socket)
       client.instance_variable_set(:@last_packet_received_at, 0)
+      client.instance_variable_set :@last_packet_sent_at, client.send(:current_time)
       client.reconnect_limit = 0
       allow(IO).to receive(:select).and_return([[socket], [], []])
       @read_queue = client.instance_variable_get(:@read_queue)
@@ -859,6 +862,7 @@ describe MQTT::Client do
 
     it 'closes the socket if there is an exception' do
       expect(socket).to receive(:close).once
+      client.instance_variable_set :@last_packet_sent_at, client.send(:current_time)
       allow(MQTT::Packet).to receive(:read).and_raise(MQTT::Exception.new)
       client.send(:receive_packet)
     end
@@ -872,7 +876,7 @@ describe MQTT::Client do
 
     it 'updates last_packet_received_at when receiving a Pingresp' do
       allow(MQTT::Packet).to receive(:read).and_return MQTT::Packet::Pingresp.new
-      client.instance_variable_set '@last_packet_received_at', 0
+      client.instance_variable_set :@last_packet_received_at, 0
       client.send :receive_packet
       expect(client.instance_variable_get(:@last_packet_received_at)).to be_within(1).of client.send(:current_time)
     end
@@ -887,7 +891,7 @@ describe MQTT::Client do
     end
 
     it 'sends a ping packet if one is due' do
-      client.instance_variable_set(:@last_packet_received_at, 0)
+      client.instance_variable_set(:@last_packet_sent_at, 0)
       client.send(:handle_keep_alives)
       expect(socket.string).to eq("\xC0\x00")
       expect(client.instance_variable_get(:@keep_alive_sent)).to eq true
@@ -895,6 +899,7 @@ describe MQTT::Client do
 
     it 'raises an exception if no ping response has been received' do
       client.instance_variable_set(:@last_packet_received_at, 0)
+      client.instance_variable_set(:@last_packet_sent_at, 0)
       client.instance_variable_set(:@keep_alive_sent, true)
       expect { client.send(:handle_keep_alives) }.to raise_error(MQTT::KeepAliveTimeout)
     end
