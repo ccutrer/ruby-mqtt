@@ -134,8 +134,11 @@ module MQTT
     #  client = MQTT::Client.new('myserver.example.com', 18830)
     #  client = MQTT::Client.new(host: 'myserver.example.com')
     #  client = MQTT::Client.new(host: 'myserver.example.com', keep_alive: 30)
+    #  client = MQTT::Client.new(uri: 'mqtt://myserver.example.com', keep_alive: 30)
     #
     def initialize(host = nil, port = nil, **attributes)
+      host = attributes.delete(:uri) if attributes.key?(:uri)
+
       # Set server URI from environment if present
       if host.nil? && port.nil? && attributes.empty? && ENV['MQTT_SERVER']
         attributes.merge!(parse_uri(ENV['MQTT_SERVER']))
