@@ -43,13 +43,16 @@ module MQTT
     attr_accessor :resend_limit
 
     # How many attempts to re-establish a connection after it drops before
-    # giving up (default 5)
+    # giving up (default 5); nil for unlimited retries
     attr_accessor :reconnect_limit
 
     # How long to wait between re-connection attempts (exponential - i.e.
     # immediately after first drop, then 5s, then 25s, then 125s, etc.
-    # when theis value defaults to 5)
+    # when this value defaults to 5)
     attr_accessor :reconnect_backoff
+
+    # the longest amount of time to wait before attempting a reconnect
+    attr_accessor :reconnect_backoff_max
 
     # Username to authenticate to the server with
     attr_accessor :username
@@ -80,7 +83,8 @@ module MQTT
       ack_timeout: 5,
       resend_limit: 5,
       reconnect_limit: 5,
-      reconnect_backoff: 5,
+      reconnect_backoff: 2,
+      reconnect_backoff_max: 30,
       username: nil,
       password: nil,
       will_topic: nil,
@@ -560,9 +564,10 @@ module MQTT
         rescue
           @socket&.close
           @socket = nil
+          retries += 1
 
-          if (retries += 1) < @reconnect_limit
-            sleep @reconnect_backoff ** retries
+          if @reconnect_limit.nil? || retries < @reconnect_limit
+            sleep [@reconnect_backoff ** retries, @reconnect_backoff_max].min
             retry
           end
         end
