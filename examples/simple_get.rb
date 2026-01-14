@@ -6,11 +6,11 @@
 # and then loop, displaying any messages received.
 #
 
-require 'mqtt'
+require "mqtt"
 
-MQTT::Client.connect('test.mosquitto.org') do |client|
+MQTT::Client.connect("test.mosquitto.org") do |client|
   # If you pass a block to the get method, then it will loop
-  client.get('#') do |topic, message|
+  client.get("#") do |topic, message|
     puts "#{topic}: #{message}"
   end
 end

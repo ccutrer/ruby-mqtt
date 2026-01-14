@@ -16,9 +16,9 @@
 #   * Only handles a single connection at a time
 #
 
-require 'logger'
-require 'socket'
-require 'mqtt'
+require "logger"
+require "socket"
+require "mqtt"
 
 module MQTT
   class FakeServer
@@ -34,7 +34,7 @@ module MQTT
     #
     # If no port is given, bind to a random port number
     # If no bind address is given, bind to localhost
-    def initialize(port = nil, bind_address = '127.0.0.1')
+    def initialize(port = nil, bind_address = "127.0.0.1")
       @port = port
       @address = bind_address
       @pings_received = 0
@@ -69,7 +69,7 @@ module MQTT
 
     # Stop the thread and close the socket
     def stop
-      logger.info 'Stopping fake MQTT server'
+      logger.info "Stopping fake MQTT server"
       @socket&.close
       @socket = nil
 
@@ -113,7 +113,7 @@ module MQTT
           )
           topic = packet.topics[0][0]
           client.write MQTT::Packet::Publish.new(
-            topic: topic,
+            topic:,
             payload: "hello #{topic}",
             retain: true
           )

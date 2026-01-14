@@ -1,53 +1,27 @@
-require:
+inherit_gem:
+  rubocop-inst:
+  - rubocop.yml
+  - rubocop-rspec.yml
+
+plugins:
   - rubocop-rake
-  - rubocop-rspec
 
 AllCops:
-  TargetRubyVersion: 2.5
-  NewCops: enable
-  Exclude:
-    - 'bin/*'
+  TargetRubyVersion: 3.1
 
-Layout/SpaceAroundOperators:
-  EnforcedStyleForExponentOperator: space
-Lint/InheritException:
-  Enabled: false
 Naming/FileName:
   Exclude: [ lib/mqtt-ccutrer.rb ]
+
 RSpec/ContextWording:
-  Enabled: false # TODO: enable
-RSpec/DescribeClass:
-  Enabled: false
-RSpec/DescribedClass:
-  Enabled: false
-RSpec/ExampleLength:
-  Enabled: false
-RSpec/InstanceVariable:
-  Enabled: false # TODO: enable
-RSpec/MessageSpies:
-  Enabled: false
-RSpec/MultipleExpectations:
-  Enabled: false
-RSpec/NestedGroups:
-  Enabled: false
-RSpec/RepeatedDescription:
-  Enabled: false # TODO: enable
-RSpec/StubbedMock:
-  Enabled: false
-RSpec/VerifiedDoubles:
-  Enabled: false
+  Prefixes:
+    - that
+    - when
+    - with
+    - without
+
 Style/Documentation:
   Enabled: false
 Style/FormatString:
   Enabled: false
 Style/AccessorGrouping:
-  Enabled: false
-Style/NumericPredicate:
-  Enabled: false
-Style/RescueStandardError:
-  EnforcedStyle: implicit
-Style/StringConcatenation:
-  Enabled: false
-
-Metrics:
   Enabled: false

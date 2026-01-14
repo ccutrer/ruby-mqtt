@@ -19,7 +19,7 @@ module MQTT
 
     # Default attribute values
     ATTR_DEFAULTS = {
-      version: '3.1.0',
+      version: "3.1.0",
       id: 0,
       body_length: nil
     }.freeze
@@ -42,7 +42,7 @@ module MQTT
         body_length += ((digit & 0x7F) * multiplier)
         multiplier *= 0x80
         pos += 1
-        break if (digit & 0x80).zero? || pos > 4
+        break if digit.nobits?(0x80) || pos > 4
       end
 
       # Store the expected body length in the packet
@@ -66,10 +66,10 @@ module MQTT
     # The header is removed from the buffer passed into this function
     def self.parse_header(buffer)
       # Check that the packet is a long as the minimum packet size
-      raise ProtocolException, 'Invalid packet: less than 2 bytes long' if buffer.bytesize < 2
+      raise ProtocolException, "Invalid packet: less than 2 bytes long" if buffer.bytesize < 2
 
       # Create a new packet object
-      bytes = buffer.unpack('C5')
+      bytes = buffer.unpack("C5")
       packet = create_from_header(bytes.first)
       packet.validate_flags
 
@@ -79,13 +79,13 @@ module MQTT
       pos = 1
 
       loop do
-        raise ProtocolException, 'The packet length header is incomplete' if buffer.bytesize <= pos
+        raise ProtocolException, "The packet length header is incomplete" if buffer.bytesize <= pos
 
         digit = bytes[pos]
         body_length += ((digit & 0x7F) * multiplier)
         multiplier *= 0x80
         pos += 1
-        break if (digit & 0x80).zero? || pos > 4
+        break if digit.nobits?(0x80) || pos > 4
       end
 
       # Store the expected body length in the packet
@@ -105,10 +105,10 @@ module MQTT
       raise ProtocolException, "Invalid packet type identifier: #{type_id}" if packet_class.nil?
 
       # Convert the last 4 bits of byte into array of true/false
-      flags = (0..3).map { |i| byte & (2 ** i) != 0 }
+      flags = (0..3).map { |i| byte & (2**i) != 0 }
 
       # Create a new packet object
-      packet_class.new(flags: flags)
+      packet_class.new(flags:)
     end
 
     # Create a new empty packet
@@ -148,7 +148,7 @@ module MQTT
     #
     # Example: CONNACK
     def type_name
-      self.class.name.split('::').last.upcase
+      self.class.name.split("::").last.upcase
     end
 
     # Set the protocol version number
@@ -172,7 +172,7 @@ module MQTT
 
     # Get serialisation of packet's body (variable header and payload)
     def encode_body
-      '' # No body by default
+      "" # No body by default
     end
 
     # Serialise the packet
@@ -191,20 +191,20 @@ module MQTT
 
       # Check that that packet isn't too big
       body_length = body.bytesize
-      raise 'Error serialising packet: body is more than 256MB' if body_length > 268_435_455
+      raise "Error serialising packet: body is more than 256MB" if body_length > 268_435_455
 
       # Build up the body length field bytes
       loop do
         digit = (body_length % 128)
         body_length = body_length.div(128)
         # if there are more digits to encode, set the top bit of this digit
-        digit |= 0x80 if body_length > 0
+        digit |= 0x80 if body_length.positive?
         header.push(digit)
         break if body_length <= 0
       end
 
       # Convert header to binary and add on body
-      header.pack('C*') + body
+      header.pack("C*") + body
     end
 
     # Check that fixed header flags are valid for types that don't use the flags
@@ -217,60 +217,60 @@ module MQTT
 
     # Returns a human readable string
     def inspect
-      "\#<#{self.class}>"
+      "#<#{self.class}>"
     end
 
     # Read and unpack a single byte from a socket
     def self.read_byte(socket)
       byte = socket.read(1)
-      raise ProtocolException, 'Failed to read byte from socket' if byte.nil?
+      raise ProtocolException, "Failed to read byte from socket" if byte.nil?
 
-      byte.unpack1('C')
+      byte.unpack1("C")
     end
 
     protected
 
     # Encode an array of bytes and return them
     def encode_bytes(*bytes)
-      bytes.pack('C*')
+      bytes.pack("C*")
     end
 
     # Encode an array of bits and return them
     def encode_bits(bits)
-      [bits.map { |b| b ? '1' : '0' }.join].pack('b*')
+      [bits.map { |b| b ? "1" : "0" }.join].pack("b*")
     end
 
     # Encode a 16-bit unsigned integer and return it
     def encode_short(val)
-      raise 'Value too big for short' if val > 0xffff
+      raise "Value too big for short" if val > 0xffff
 
-      [val.to_i].pack('n')
+      [val.to_i].pack("n")
     end
 
     # Encode a UTF-8 string and return it
     # (preceded by the length of the string)
     def encode_string(str)
-      str = str.to_s.encode('UTF-8')
+      str = str.to_s.encode("UTF-8")
 
       # Force to binary, when assembling the packet
-      str.force_encoding('ASCII-8BIT')
+      str.force_encoding("ASCII-8BIT")
       encode_short(str.bytesize) + str
     end
 
     # Remove a 16-bit unsigned integer from the front of buffer
     def shift_short(buffer)
       bytes = buffer.slice!(0..1)
-      bytes.unpack1('n')
+      bytes.unpack1("n")
     end
 
     # Remove one byte from the front of the string
     def shift_byte(buffer)
-      buffer.slice!(0...1).unpack1('C')
+      buffer.slice!(0...1).unpack1("C")
     end
 
     # Remove 8 bits from the front of buffer
     def shift_bits(buffer)
-      buffer.slice!(0...1).unpack1('b8').split('').map { |b| b == '1' }
+      buffer.slice!(0...1).unpack1("b8").chars.map { |b| b == "1" }
     end
 
     # Remove n bytes from the front of buffer
@@ -283,7 +283,7 @@ module MQTT
       len = shift_short(buffer)
       str = shift_data(buffer, len)
       # Strings in MQTT v3.1 are all UTF-8
-      str.force_encoding('UTF-8')
+      str.force_encoding("UTF-8")
     end
 
     ## PACKET SUBCLASSES ##
@@ -299,7 +299,7 @@ module MQTT
       # Default attribute values
       ATTR_DEFAULTS = {
         topic: nil,
-        payload: ''
+        payload: ""
       }.freeze
 
       # Create a new Publish packet
@@ -335,7 +335,7 @@ module MQTT
       # Set the Quality of Service level (0/1/2)
       def qos=(arg)
         @qos = arg.to_i
-        raise "Invalid QoS value: #{@qos}" if @qos < 0 || @qos > 2
+        raise "Invalid QoS value: #{@qos}" unless (0..2).cover?(@qos)
 
         @flags[1] = (arg & 0x01 == 0x01)
         @flags[2] = (arg & 0x02 == 0x02)
@@ -343,18 +343,18 @@ module MQTT
 
       # Get serialisation of packet's body
       def encode_body
-        body = ''
-        raise 'Invalid topic name when serialising packet' if @topic.nil? || @topic.to_s.empty?
+        body = ""
+        raise "Invalid topic name when serialising packet" if @topic.nil? || @topic.to_s.empty?
 
         body += encode_string(@topic)
         body += encode_short(@id) unless qos.zero?
-        body += payload.to_s.dup.force_encoding('ASCII-8BIT')
+        body += payload.to_s.dup.force_encoding("ASCII-8BIT")
         body
       end
 
       # Parse the body (variable header and payload) of a Publish packet
       def parse_body(buffer)
-        super(buffer)
+        super
         @topic = shift_string(buffer)
         @id = shift_short(buffer) unless qos.zero?
         @payload = buffer
@@ -363,16 +363,16 @@ module MQTT
       # Check that fixed header flags are valid for this packet type
       # @private
       def validate_flags
-        raise ProtocolException, 'Invalid packet: QoS value of 3 is not allowed' if qos == 3
-        raise ProtocolException, 'Invalid packet: DUP cannot be set for QoS 0' if qos.zero? && duplicate
+        raise ProtocolException, "Invalid packet: QoS value of 3 is not allowed" if qos == 3
+        raise ProtocolException, "Invalid packet: DUP cannot be set for QoS 0" if qos.zero? && duplicate
       end
 
       # Returns a human readable string, summarising the properties of the packet
       def inspect
-        "\#<#{self.class}: " \
-          "d#{duplicate ? '1' : '0'}, " \
+        "#<#{self.class}: " \
+          "d#{duplicate ? "1" : "0"}, " \
           "q#{qos}, " \
-          "r#{retain ? '1' : '0'}, " \
+          "r#{retain ? "1" : "0"}, " \
           "m#{id}, " \
           "'#{topic}', " \
           "#{inspect_payload}>"
@@ -433,7 +433,7 @@ module MQTT
         will_topic: nil,
         will_qos: 0,
         will_retain: false,
-        will_payload: '',
+        will_payload: "",
         username: nil,
         password: nil
       }.freeze
@@ -443,11 +443,11 @@ module MQTT
         super(ATTR_DEFAULTS.merge(args))
 
         case version
-        when '3.1.0', '3.1'
-          self.protocol_name ||= 'MQIsdp'
+        when "3.1.0", "3.1"
+          self.protocol_name ||= "MQIsdp"
           self.protocol_level ||= 0x03
-        when '3.1.1'
-          self.protocol_name ||= 'MQTT'
+        when "3.1.1"
+          self.protocol_name ||= "MQTT"
           self.protocol_level ||= 0x04
         else
           raise ArgumentError, "Unsupported protocol version: #{version}"
@@ -456,17 +456,17 @@ module MQTT
 
       # Get serialisation of packet's body
       def encode_body
-        body = ''
+        body = ""
 
-        if @version == '3.1.0'
-          raise 'Client identifier too short while serialising packet' if @client_id.nil? || @client_id.bytesize < 1
-          raise 'Client identifier too long when serialising packet' if @client_id.bytesize > 23
+        if @version == "3.1.0"
+          raise "Client identifier too short while serialising packet" if @client_id.nil? || @client_id.bytesize < 1
+          raise "Client identifier too long when serialising packet" if @client_id.bytesize > 23
         end
 
         body += encode_string(@protocol_name)
         body += encode_bytes(@protocol_level.to_i)
 
-        raise 'Invalid keep-alive value: cannot be less than 0' if @keep_alive < 0
+        raise "Invalid keep-alive value: cannot be less than 0" if @keep_alive.negative?
 
         # Set the Connect flags
         @connect_flags = 0
@@ -492,13 +492,13 @@ module MQTT
 
       # Parse the body (variable header and payload) of a Connect packet
       def parse_body(buffer)
-        super(buffer)
+        super
         @protocol_name = shift_string(buffer)
         @protocol_level = shift_byte(buffer).to_i
-        if @protocol_name == 'MQIsdp' && @protocol_level == 3
-          @version = '3.1.0'
-        elsif @protocol_name == 'MQTT' && @protocol_level == 4
-          @version = '3.1.1'
+        if @protocol_name == "MQIsdp" && @protocol_level == 3
+          @version = "3.1.0"
+        elsif @protocol_name == "MQTT" && @protocol_level == 4
+          @version = "3.1.1"
         else
           raise ProtocolException, "Unsupported protocol: #{@protocol_name}/#{@protocol_level}"
         end
@@ -515,21 +515,21 @@ module MQTT
           # The MQTT v3.1 specification says that the payload is a UTF-8 string
           @will_payload = shift_string(buffer)
         end
-        @username = shift_string(buffer) if ((@connect_flags & 0x80) >> 7) == 0x01 && buffer.bytesize > 0
-        if ((@connect_flags & 0x40) >> 6) == 0x01 && buffer.bytesize > 0 # rubocop: disable Style/GuardClause
+        @username = shift_string(buffer) if ((@connect_flags & 0x80) >> 7) == 0x01 && !buffer.empty?
+        if ((@connect_flags & 0x40) >> 6) == 0x01 && !buffer.empty? # rubocop: disable Style/GuardClause
           @password = shift_string(buffer)
         end
       end
 
       # Returns a human readable string, summarising the properties of the packet
       def inspect
-        str = "\#<#{self.class}: " \
+        str = "#<#{self.class}: " \
               "keep_alive=#{keep_alive}"
-        str += ', clean' if clean_session
+        str += ", clean" if clean_session
         str += ", client_id='#{client_id}'"
         str += ", username='#{username}'" unless username.nil?
-        str += ', password=...' unless password.nil?
-        str + '>'
+        str += ", password=..." unless password.nil?
+        "#{str}>"
       end
 
       # ---- Deprecated attributes and methods  ---- #
@@ -574,17 +574,17 @@ module MQTT
       def return_msg
         case return_code
         when 0x00
-          'Connection Accepted'
+          "Connection Accepted"
         when 0x01
-          'Connection refused: unacceptable protocol version'
+          "Connection refused: unacceptable protocol version"
         when 0x02
-          'Connection refused: client identifier rejected'
+          "Connection refused: client identifier rejected"
         when 0x03
-          'Connection refused: server unavailable'
+          "Connection refused: server unavailable"
         when 0x04
-          'Connection refused: bad user name or password'
+          "Connection refused: bad user name or password"
         when 0x05
-          'Connection refused: not authorised'
+          "Connection refused: not authorised"
         else
           "Connection refused: error code #{return_code}"
         end
@@ -592,7 +592,7 @@ module MQTT
 
       # Get serialisation of packet's body
       def encode_body
-        body = ''
+        body = ""
         body += encode_bits(@connack_flags)
         body += encode_bytes(@return_code.to_i)
         body
@@ -600,22 +600,22 @@ module MQTT
 
       # Parse the body (variable header and payload) of a Connect Acknowledgment packet
       def parse_body(buffer)
-        super(buffer)
+        super
         @connack_flags = shift_bits(buffer)
         unless @connack_flags[1, 7] == [false, false, false, false, false, false, false]
-          raise ProtocolException, 'Invalid flags in Connack variable header'
+          raise ProtocolException, "Invalid flags in Connack variable header"
         end
 
         @return_code = shift_byte(buffer)
 
         return if buffer.empty?
 
-        raise ProtocolException, 'Extra bytes at end of Connect Acknowledgment packet'
+        raise ProtocolException, "Extra bytes at end of Connect Acknowledgment packet"
       end
 
       # Returns a human readable string, summarising the properties of the packet
       def inspect
-        "\#<#{self.class}: 0x%2.2X>" % return_code
+        "#<#{self.class}: 0x%2.2X>" % return_code
       end
     end
 
@@ -628,17 +628,17 @@ module MQTT
 
       # Parse the body (variable header and payload) of a packet
       def parse_body(buffer)
-        super(buffer)
+        super
         @id = shift_short(buffer)
 
         return if buffer.empty?
 
-        raise ProtocolException, 'Extra bytes at end of Publish Acknowledgment packet'
+        raise ProtocolException, "Extra bytes at end of Publish Acknowledgment packet"
       end
 
       # Returns a human readable string, summarising the properties of the packet
       def inspect
-        "\#<#{self.class}: 0x%2.2X>" % id
+        "#<#{self.class}: 0x%2.2X>" % id
       end
     end
 
@@ -651,17 +651,17 @@ module MQTT
 
       # Parse the body (variable header and payload) of a packet
       def parse_body(buffer)
-        super(buffer)
+        super
         @id = shift_short(buffer)
 
         return if buffer.empty?
 
-        raise ProtocolException, 'Extra bytes at end of Publish Received packet'
+        raise ProtocolException, "Extra bytes at end of Publish Received packet"
       end
 
       # Returns a human readable string, summarising the properties of the packet
       def inspect
-        "\#<#{self.class}: 0x%2.2X>" % id
+        "#<#{self.class}: 0x%2.2X>" % id
       end
     end
 
@@ -684,12 +684,12 @@ module MQTT
 
       # Parse the body (variable header and payload) of a packet
       def parse_body(buffer)
-        super(buffer)
+        super
         @id = shift_short(buffer)
 
         return if buffer.empty?
 
-        raise ProtocolException, 'Extra bytes at end of Publish Release packet'
+        raise ProtocolException, "Extra bytes at end of Publish Release packet"
       end
 
       # Check that fixed header flags are valid for this packet type
@@ -697,12 +697,12 @@ module MQTT
       def validate_flags
         return if @flags == [false, true, false, false]
 
-        raise ProtocolException, 'Invalid flags in PUBREL packet header'
+        raise ProtocolException, "Invalid flags in PUBREL packet header"
       end
 
       # Returns a human readable string, summarising the properties of the packet
       def inspect
-        "\#<#{self.class}: 0x%2.2X>" % id
+        "#<#{self.class}: 0x%2.2X>" % id
       end
     end
 
@@ -715,17 +715,17 @@ module MQTT
 
       # Parse the body (variable header and payload) of a packet
       def parse_body(buffer)
-        super(buffer)
+        super
         @id = shift_short(buffer)
 
         return if buffer.empty?
 
-        raise ProtocolException, 'Extra bytes at end of Publish Complete packet'
+        raise ProtocolException, "Extra bytes at end of Publish Complete packet"
       end
 
       # Returns a human readable string, summarising the properties of the packet
       def inspect
-        "\#<#{self.class}: 0x%2.2X>" % id
+        "#<#{self.class}: 0x%2.2X>" % id
       end
     end
 
@@ -785,7 +785,7 @@ module MQTT
 
       # Get serialisation of packet's body
       def encode_body
-        raise 'no topics given when serialising packet' if @topics.empty?
+        raise "no topics given when serialising packet" if @topics.empty?
 
         body = encode_short(@id)
         topics.each do |item|
@@ -797,10 +797,10 @@ module MQTT
 
       # Parse the body (variable header and payload) of a packet
       def parse_body(buffer)
-        super(buffer)
+        super
         @id = shift_short(buffer)
         @topics = []
-        while buffer.bytesize > 0
+        until buffer.empty?
           topic_name = shift_string(buffer)
           topic_qos = shift_byte(buffer)
           @topics << [topic_name, topic_qos]
@@ -812,14 +812,14 @@ module MQTT
       def validate_flags
         return if @flags == [false, true, false, false]
 
-        raise ProtocolException, 'Invalid flags in SUBSCRIBE packet header'
+        raise ProtocolException, "Invalid flags in SUBSCRIBE packet header"
       end
 
       # Returns a human readable string, summarising the properties of the packet
       def inspect
-        _str = "\#<#{self.class}: 0x%2.2X, %s>" % [
+        _str = "#<#{self.class}: 0x%2.2X, %s>" % [
           id,
-          topics.map { |t| "'#{t[0]}':#{t[1]}" }.join(', ')
+          topics.map { |t| "'#{t[0]}':#{t[1]}" }.join(", ")
         ]
       end
     end
@@ -848,13 +848,13 @@ module MQTT
         when Integer
           @return_codes = [value]
         else
-          raise 'return_codes should be an integer or an array of return codes'
+          raise "return_codes should be an integer or an array of return codes"
         end
       end
 
       # Get serialisation of packet's body
       def encode_body
-        raise 'no granted QoS given when serialising packet' if @return_codes.empty?
+        raise "no granted QoS given when serialising packet" if @return_codes.empty?
 
         body = encode_short(@id)
         return_codes.each { |qos| body += encode_bytes(qos) }
@@ -863,14 +863,14 @@ module MQTT
 
       # Parse the body (variable header and payload) of a packet
       def parse_body(buffer)
-        super(buffer)
+        super
         @id = shift_short(buffer)
-        @return_codes << shift_byte(buffer) while buffer.bytesize > 0
+        @return_codes << shift_byte(buffer) until buffer.empty?
       end
 
       # Returns a human readable string, summarising the properties of the packet
       def inspect
-        "\#<#{self.class}: 0x%2.2X, rc=%s>" % [id, return_codes.map { |rc| '0x%2.2X' % rc }.join(',')]
+        "#<#{self.class}: 0x%2.2X, rc=%s>" % [id, return_codes.map { |rc| "0x%2.2X" % rc }.join(",")]
       end
 
       # ---- Deprecated attributes and methods  ---- #
@@ -909,7 +909,7 @@ module MQTT
 
       # Get serialisation of packet's body
       def encode_body
-        raise 'no topics given when serialising packet' if @topics.empty?
+        raise "no topics given when serialising packet" if @topics.empty?
 
         body = encode_short(@id)
         topics.each { |topic| body += encode_string(topic) }
@@ -918,9 +918,9 @@ module MQTT
 
       # Parse the body (variable header and payload) of a packet
       def parse_body(buffer)
-        super(buffer)
+        super
         @id = shift_short(buffer)
-        @topics << shift_string(buffer) while buffer.bytesize > 0
+        @topics << shift_string(buffer) until buffer.empty?
       end
 
       # Check that fixed header flags are valid for this packet type
@@ -928,14 +928,14 @@ module MQTT
       def validate_flags
         return if @flags == [false, true, false, false]
 
-        raise ProtocolException, 'Invalid flags in UNSUBSCRIBE packet header'
+        raise ProtocolException, "Invalid flags in UNSUBSCRIBE packet header"
       end
 
       # Returns a human readable string, summarising the properties of the packet
       def inspect
-        "\#<#{self.class}: 0x%2.2X, %s>" % [
+        "#<#{self.class}: 0x%2.2X, %s>" % [
           id,
-          topics.map { |t| "'#{t}'" }.join(', ')
+          topics.map { |t| "'#{t}'" }.join(", ")
         ]
       end
     end
@@ -944,7 +944,7 @@ module MQTT
     class Unsuback < MQTT::Packet
       # Create a new Unsubscribe Acknowledgment packet
       def initialize(args = {})
-        super(args)
+        super
       end
 
       # Get serialisation of packet's body
@@ -954,17 +954,17 @@ module MQTT
 
       # Parse the body (variable header and payload) of a packet
       def parse_body(buffer)
-        super(buffer)
+        super
         @id = shift_short(buffer)
 
         return if buffer.empty?
 
-        raise ProtocolException, 'Extra bytes at end of Unsubscribe Acknowledgment packet'
+        raise ProtocolException, "Extra bytes at end of Unsubscribe Acknowledgment packet"
       end
 
       # Returns a human readable string, summarising the properties of the packet
       def inspect
-        "\#<#{self.class}: 0x%2.2X>" % id
+        "#<#{self.class}: 0x%2.2X>" % id
       end
     end
 
@@ -972,16 +972,16 @@ module MQTT
     class Pingreq < MQTT::Packet
       # Create a new Ping Request packet
       def initialize(args = {})
-        super(args)
+        super
       end
 
       # Check the body
       def parse_body(buffer)
-        super(buffer)
+        super
 
         return if buffer.empty?
 
-        raise ProtocolException, 'Extra bytes at end of Ping Request packet'
+        raise ProtocolException, "Extra bytes at end of Ping Request packet"
       end
     end
 
@@ -989,16 +989,16 @@ module MQTT
     class Pingresp < MQTT::Packet
       # Create a new Ping Response packet
       def initialize(args = {})
-        super(args)
+        super
       end
 
       # Check the body
       def parse_body(buffer)
-        super(buffer)
+        super
 
         return if buffer.empty?
 
-        raise ProtocolException, 'Extra bytes at end of Ping Response packet'
+        raise ProtocolException, "Extra bytes at end of Ping Response packet"
       end
     end
 
@@ -1006,16 +1006,16 @@ module MQTT
     class Disconnect < MQTT::Packet
       # Create a new Client Disconnect packet
       def initialize(args = {})
-        super(args)
+        super
       end
 
       # Check the body
       def parse_body(buffer)
-        super(buffer)
+        super
 
         return if buffer.empty?
 
-        raise ProtocolException, 'Extra bytes at end of Disconnect packet'
+        raise ProtocolException, "Extra bytes at end of Disconnect packet"
       end
     end
 

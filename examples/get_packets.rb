@@ -6,11 +6,11 @@
 # and then loop, displaying the packets received.
 #
 
-require 'mqtt'
+require "mqtt"
 
-MQTT::Client.connect('test.mosquitto.org') do |client|
+MQTT::Client.connect("test.mosquitto.org") do |client|
   # If you pass a block to the get_packet method, then it will loop
-  client.get_packet('#') do |packet|
+  client.get_packet("#") do |packet|
     p packet
   end
 end

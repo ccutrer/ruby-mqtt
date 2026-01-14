@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-autoload :OpenSSL, 'openssl'
-autoload :SecureRandom, 'securerandom'
-autoload :URI, 'uri'
+autoload :OpenSSL, "openssl"
+autoload :SecureRandom, "securerandom"
+autoload :URI, "uri"
 
 # Client class for talking to an MQTT server
 module MQTT
@@ -76,7 +76,7 @@ module MQTT
     ATTR_DEFAULTS = {
       host: nil,
       port: nil,
-      version: '3.1.1',
+      version: "3.1.1",
       keep_alive: 15,
       clean_session: true,
       client_id: nil,
@@ -104,15 +104,15 @@ module MQTT
     #    # do stuff here
     #  end
     #
-    def self.connect(*args, &block)
+    def self.connect(*args, &)
       client = MQTT::Client.new(*args)
-      client.connect(&block)
+      client.connect(&)
       client
     end
 
     # Generate a random client identifier
     # (using the characters 0-9 and a-z)
-    def self.generate_client_id(prefix = 'ruby', length = 16)
+    def self.generate_client_id(prefix = "ruby", length = 16)
       "#{prefix}#{SecureRandom.alphanumeric(length).downcase}"
     end
 
@@ -140,8 +140,8 @@ module MQTT
       host = attributes.delete(:uri) if attributes.key?(:uri)
 
       # Set server URI from environment if present
-      if host.nil? && port.nil? && attributes.empty? && ENV['MQTT_SERVER']
-        attributes.merge!(parse_uri(ENV['MQTT_SERVER']))
+      if host.nil? && port.nil? && attributes.empty? && ENV["MQTT_SERVER"]
+        attributes.merge!(parse_uri(ENV["MQTT_SERVER"]))
       end
 
       if host
@@ -239,13 +239,13 @@ module MQTT
       end
 
       if @client_id.nil? || @client_id.empty?
-        raise 'Must provide a client_id if clean_session is set to false' unless @clean_session
+        raise "Must provide a client_id if clean_session is set to false" unless @clean_session
 
         # Empty client id is not allowed for version 3.1.0
-        @client_id = MQTT::Client.generate_client_id if @version == '3.1.0'
+        @client_id = MQTT::Client.generate_client_id if @version == "3.1.0"
       end
 
-      raise ArgumentError, 'No MQTT server host set when attempting to connect' if @host.nil?
+      raise ArgumentError, "No MQTT server host set when attempting to connect" if @host.nil?
 
       connect_internal
 
@@ -354,12 +354,12 @@ module MQTT
     # Publish a message on a particular topic to the MQTT server.
     def publish(topics, payload = nil, retain: false, qos: 0)
       if topics.is_a?(Hash) && !payload.nil?
-        raise ArgumentError, 'Payload cannot be passed if passing a hash for topics and payloads'
+        raise ArgumentError, "Payload cannot be passed if passing a hash for topics and payloads"
       end
       raise NotConnectedException unless connected?
 
       if @batch_publish && qos != 0
-        values = @batch_publish[{ retain: retain, qos: qos }] ||= {}
+        values = @batch_publish[{ retain:, qos: }] ||= {}
         if topics.is_a?(Hash)
           values.merge!(topics)
         else
@@ -373,14 +373,14 @@ module MQTT
       topics = { topics => payload } unless topics.is_a?(Hash)
 
       topics.each do |(topic, topic_payload)|
-        raise ArgumentError, 'Topic name cannot be nil' if topic.nil?
-        raise ArgumentError, 'Topic name cannot be empty' if topic.empty?
+        raise ArgumentError, "Topic name cannot be nil" if topic.nil?
+        raise ArgumentError, "Topic name cannot be empty" if topic.empty?
 
         packet = MQTT::Packet::Publish.new(
           id: next_packet_id,
-          qos: qos,
-          retain: retain,
-          topic: topic,
+          qos:,
+          retain:,
+          topic:,
           payload: topic_payload
         )
 
@@ -415,7 +415,7 @@ module MQTT
 
       packet = MQTT::Packet::Subscribe.new(
         id: next_packet_id,
-        topics: topics
+        topics:
       )
       token = register_for_ack(packet) if wait_for_ack
       send_packet(packet)
@@ -426,10 +426,10 @@ module MQTT
     def unsubscribe(*topics, wait_for_ack: false)
       raise NotConnectedException unless connected?
 
-      topics = topics.first if topics.is_a?(Enumerable) && topics.count == 1
+      topics = topics.first if topics.is_a?(Enumerable) && topics.one?
 
       packet = MQTT::Packet::Unsubscribe.new(
-        topics: topics,
+        topics:,
         id: next_packet_id
       )
       token = register_for_ack(packet) if wait_for_ack
@@ -455,18 +455,18 @@ module MQTT
         packet = @read_queue.pop
         if packet.is_a?(Array) && packet.last >= loop_start
           e = packet.first
-          e.set_backtrace((e.backtrace || []) + ['<from MQTT worker thread>'] + caller)
+          e.set_backtrace((e.backtrace || []) + ["<from MQTT worker thread>"] + caller)
           raise e
         end
         next unless packet.is_a?(Packet)
 
         unless block_given?
-          puback_packet(packet) if packet.qos > 0
+          puback_packet(packet) if packet.qos.positive?
           return packet
         end
 
         yield packet
-        puback_packet(packet) if packet.qos > 0
+        puback_packet(packet) if packet.qos.positive?
       end
     end
 
@@ -488,6 +488,7 @@ module MQTT
     private
 
     PendingAck = Struct.new(:packet, :queue, :timeout_at, :send_count)
+    private_constant :PendingAck
 
     def connect_internal
       # Create network socket
@@ -563,14 +564,14 @@ module MQTT
 
         retries = 0
         begin
-          connect_internal unless @reconnect_limit == 0
+          connect_internal unless @reconnect_limit.zero?
         rescue
           @socket&.close
           @socket = nil
           retries += 1
 
           if @reconnect_limit.nil? || retries < @reconnect_limit
-            sleep [@reconnect_backoff ** retries, @reconnect_backoff_max].min
+            sleep [@reconnect_backoff**retries, @reconnect_backoff_max].min
             retry
           end
         end
@@ -590,7 +591,7 @@ module MQTT
       end
 
       begin
-        if @on_reconnect&.arity == 0
+        if @on_reconnect&.arity&.zero?
           @on_reconnect.call
         else
           @on_reconnect&.call(@connack)
@@ -632,7 +633,7 @@ module MQTT
       @acks_mutex.synchronize do
         if @acks.empty?
           # just need to wake up the read thread to set up the timeout for this packet
-          @wake_up_pipe[1].write('z')
+          @wake_up_pipe[1].write("z")
         end
         @acks[packet.id] = PendingAck.new(packet, queue, timeout_at, 1)
       end
@@ -691,7 +692,7 @@ module MQTT
         return
       end
       # timed out, or simple re-send
-      @wake_up_pipe[1].write('z') if @acks.first.first == packet.id
+      @wake_up_pipe[1].write("z") if @acks.first.first == packet.id
       pending_ack.timeout_at = current_time + @ack_timeout
       packet.duplicate = true
       send_packet(packet)
@@ -719,7 +720,7 @@ module MQTT
     end
 
     def handle_keep_alives
-      return unless @keep_alive && @keep_alive > 0
+      return unless @keep_alive&.positive?
 
       current_time_local = current_time
       if current_time_local >= @last_packet_sent_at + @keep_alive && !@keep_alive_sent
@@ -764,20 +765,20 @@ module MQTT
     def parse_uri(uri)
       uri = URI.parse(uri) unless uri.is_a?(URI)
       ssl = case uri.scheme
-            when 'mqtt'
+            when "mqtt"
               false
-            when 'mqtts'
+            when "mqtts"
               true
             else
-              raise 'Only the mqtt:// and mqtts:// schemes are supported'
+              raise "Only the mqtt:// and mqtts:// schemes are supported"
             end
 
       {
         host: uri.host,
         port: uri.port || nil,
-        username: uri.user ? URI::Parser.new.unescape(uri.user) : nil,
-        password: uri.password ? URI::Parser.new.unescape(uri.password) : nil,
-        ssl: ssl
+        username: uri.user ? URI::RFC2396_PARSER.unescape(uri.user) : nil,
+        password: uri.password ? URI::RFC2396_PARSER.unescape(uri.password) : nil,
+        ssl:
       }
     end
 

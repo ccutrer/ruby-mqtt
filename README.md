@@ -1,5 +1,3 @@
-[![Build Status](https://travis-ci.org/njh/ruby-mqtt.svg)](https://travis-ci.org/ccutrer/ruby-mqtt)
-
 ruby-mqtt
 =========
 

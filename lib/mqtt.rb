@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require 'logger'
-require 'socket'
-require 'timeout'
+require "logger"
+require "socket"
+require "timeout"
 
-require 'mqtt/version'
+require "mqtt/version"
 
 module MQTT
   # Default port number for unencrypted connections
@@ -42,9 +42,9 @@ module MQTT
   class ResendLimitExceededException < Exception
   end
 
-  autoload :Client,   'mqtt/client'
-  autoload :Packet,   'mqtt/packet'
-  autoload :Proxy,    'mqtt/proxy'
+  autoload :Client,   "mqtt/client"
+  autoload :Packet,   "mqtt/packet"
+  autoload :Proxy,    "mqtt/proxy"
 
   # MQTT-SN
   module SN
@@ -56,6 +56,6 @@ module MQTT
     class ProtocolException < MQTT::Exception
     end
 
-    autoload :Packet, 'mqtt/sn/packet'
+    autoload :Packet, "mqtt/sn/packet"
   end
 end

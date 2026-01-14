@@ -18,11 +18,11 @@ module MQTT
       # Parse buffer into new packet object
       def self.parse(buffer)
         # Parse the fixed header (length and type)
-        length, type_id, body = buffer.unpack('CCa*')
-        length, type_id, body = buffer.unpack('xnCa*') if length == 1
+        length, type_id, body = buffer.unpack("CCa*")
+        length, type_id, body = buffer.unpack("xnCa*") if length == 1
 
         # Double-check the length
-        raise ProtocolException, 'Length of packet is not the same as the length header' if buffer.length != length
+        raise ProtocolException, "Length of packet is not the same as the length header" if buffer.length != length
 
         packet_class = PACKET_TYPES[type_id]
         raise ProtocolException, "Invalid packet type identifier: #{type_id}" if packet_class.nil?
@@ -60,12 +60,12 @@ module MQTT
 
         # Build up the body length field bytes
         body_length = body.length
-        raise 'MQTT-SN Packet is too big, maximum packet body size is 65531' if body_length > 65_531
+        raise "MQTT-SN Packet is too big, maximum packet body size is 65531" if body_length > 65_531
 
         if body_length > 253
-          [0x01, body_length + 4, type_id].pack('CnC') + body
+          [0x01, body_length + 4, type_id].pack("CnC") + body
         else
-          [body_length + 2, type_id].pack('CC') + body
+          [body_length + 2, type_id].pack("CC") + body
         end
       end
 
@@ -94,7 +94,7 @@ module MQTT
 
       # Get serialisation of packet's body (variable header and payload)
       def encode_body
-        '' # No body by default
+        "" # No body by default
       end
 
       def encode_flags
@@ -113,7 +113,7 @@ module MQTT
         flags += 0x04 if clean_session
         case topic_id_type
         when :normal
-          flags += 0x0
+          # flags += 0x0
         when :predefined
           flags += 0x1
         when :short
@@ -137,7 +137,7 @@ module MQTT
       def parse_topic_id(topic_id)
         if topic_id_type == :short
           int = topic_id.to_i
-          self.topic_id = [(int >> 8) & 0xFF, int & 0xFF].pack('CC')
+          self.topic_id = [(int >> 8) & 0xFF, int & 0xFF].pack("CC")
         else
           self.topic_id = topic_id
         end
@@ -156,7 +156,7 @@ module MQTT
             topic_name
           end
         when :predefined
-          [topic_id].pack('n')
+          [topic_id].pack("n")
         end
       end
 
@@ -170,7 +170,7 @@ module MQTT
           self.topic_name = topic
           self.topic_id = topic
         when :predefined
-          self.topic_id = topic.unpack1('n')
+          self.topic_id = topic.unpack1("n")
         end
       end
 
@@ -184,11 +184,11 @@ module MQTT
         }.freeze
 
         def encode_body
-          [gateway_id, duration].pack('Cn')
+          [gateway_id, duration].pack("Cn")
         end
 
         def parse_body(buffer)
-          self.gateway_id, self.duration = buffer.unpack('Cn')
+          self.gateway_id, self.duration = buffer.unpack("Cn")
         end
       end
 
@@ -200,11 +200,11 @@ module MQTT
         }.freeze
 
         def encode_body
-          [radius].pack('C')
+          [radius].pack("C")
         end
 
         def parse_body(buffer)
-          self.radius, _ignore = buffer.unpack('C')
+          self.radius, _ignore = buffer.unpack("C")
         end
       end
 
@@ -217,14 +217,14 @@ module MQTT
         }.freeze
 
         def encode_body
-          [gateway_id, gateway_address].pack('Ca*')
+          [gateway_id, gateway_address].pack("Ca*")
         end
 
         def parse_body(buffer)
           if buffer.length > 1
-            self.gateway_id, self.gateway_address = buffer.unpack('Ca*')
+            self.gateway_id, self.gateway_address = buffer.unpack("Ca*")
           else
-            self.gateway_id, _ignore = buffer.unpack('C')
+            self.gateway_id, _ignore = buffer.unpack("C")
             self.gateway_address = nil
           end
         end
@@ -243,14 +243,14 @@ module MQTT
         # Get serialisation of packet's body
         def encode_body
           if @client_id.nil? || @client_id.empty? || @client_id.length > 23
-            raise 'Invalid client identifier when serialising packet'
+            raise "Invalid client identifier when serialising packet"
           end
 
-          [encode_flags, 0x01, keep_alive, client_id].pack('CCna*')
+          [encode_flags, 0x01, keep_alive, client_id].pack("CCna*")
         end
 
         def parse_body(buffer)
-          flags, protocol_id, self.keep_alive, self.client_id = buffer.unpack('CCna*')
+          flags, protocol_id, self.keep_alive, self.client_id = buffer.unpack("CCna*")
 
           raise ProtocolException, "Unsupported protocol ID number: #{protocol_id}" if protocol_id != 0x01
 
@@ -265,26 +265,26 @@ module MQTT
         def return_msg
           case return_code
           when 0x00
-            'Accepted'
+            "Accepted"
           when 0x01
-            'Rejected: congestion'
+            "Rejected: congestion"
           when 0x02
-            'Rejected: invalid topic ID'
+            "Rejected: invalid topic ID"
           when 0x03
-            'Rejected: not supported'
+            "Rejected: not supported"
           else
             "Rejected: error code #{return_code}"
           end
         end
 
         def encode_body
-          raise 'return_code must be an Integer' unless return_code.is_a?(Integer)
+          raise "return_code must be an Integer" unless return_code.is_a?(Integer)
 
-          [return_code].pack('C')
+          [return_code].pack("C")
         end
 
         def parse_body(buffer)
-          self.return_code = buffer.unpack1('C')
+          self.return_code = buffer.unpack1("C")
         end
       end
 
@@ -303,17 +303,17 @@ module MQTT
 
         def encode_body
           if topic_name.nil? || topic_name.empty?
-            ''
+            ""
           else
-            [encode_flags, topic_name].pack('Ca*')
+            [encode_flags, topic_name].pack("Ca*")
           end
         end
 
         def parse_body(buffer)
           if buffer.length > 1
-            flags, self.topic_name = buffer.unpack('Ca*')
+            flags, self.topic_name = buffer.unpack("Ca*")
           else
-            flags, _ignore = buffer.unpack('C')
+            flags, _ignore = buffer.unpack("C")
             self.topic_name = nil
           end
           parse_flags(flags)
@@ -347,15 +347,15 @@ module MQTT
         }.freeze
 
         def encode_body
-          raise 'id must be an Integer' unless id.is_a?(Integer)
+          raise "id must be an Integer" unless id.is_a?(Integer)
 
-          raise 'topic_id must be an Integer' unless topic_id.is_a?(Integer)
+          raise "topic_id must be an Integer" unless topic_id.is_a?(Integer)
 
-          [topic_id, id, topic_name].pack('nna*')
+          [topic_id, id, topic_name].pack("nna*")
         end
 
         def parse_body(buffer)
-          self.topic_id, self.id, self.topic_name = buffer.unpack('nna*')
+          self.topic_id, self.id, self.topic_name = buffer.unpack("nna*")
         end
       end
 
@@ -371,15 +371,15 @@ module MQTT
         }.freeze
 
         def encode_body
-          raise 'id must be an Integer' unless id.is_a?(Integer)
+          raise "id must be an Integer" unless id.is_a?(Integer)
 
-          raise 'topic_id must be an Integer' unless topic_id.is_a?(Integer)
+          raise "topic_id must be an Integer" unless topic_id.is_a?(Integer)
 
-          [topic_id, id, return_code].pack('nnC')
+          [topic_id, id, return_code].pack("nnC")
         end
 
         def parse_body(buffer)
-          self.topic_id, self.id, self.return_code = buffer.unpack('nnC')
+          self.topic_id, self.id, self.return_code = buffer.unpack("nnC")
         end
       end
 
@@ -397,13 +397,13 @@ module MQTT
         }.freeze
 
         def encode_body
-          raise 'id must be an Integer' unless id.is_a?(Integer)
+          raise "id must be an Integer" unless id.is_a?(Integer)
 
-          [encode_flags, encode_topic_id, id, data].pack('Cnna*')
+          [encode_flags, encode_topic_id, id, data].pack("Cnna*")
         end
 
         def parse_body(buffer)
-          flags, topic_id, self.id, self.data = buffer.unpack('Cnna*')
+          flags, topic_id, self.id, self.data = buffer.unpack("Cnna*")
           parse_flags(flags)
           parse_topic_id(topic_id)
         end
@@ -421,15 +421,15 @@ module MQTT
         }.freeze
 
         def encode_body
-          raise 'id must be an Integer' unless id.is_a?(Integer)
+          raise "id must be an Integer" unless id.is_a?(Integer)
 
-          raise 'topic_id must be an Integer' unless topic_id.is_a?(Integer)
+          raise "topic_id must be an Integer" unless topic_id.is_a?(Integer)
 
-          [topic_id, id, return_code].pack('nnC')
+          [topic_id, id, return_code].pack("nnC")
         end
 
         def parse_body(buffer)
-          self.topic_id, self.id, self.return_code = buffer.unpack('nnC')
+          self.topic_id, self.id, self.return_code = buffer.unpack("nnC")
         end
       end
 
@@ -441,13 +441,13 @@ module MQTT
         }.freeze
 
         def encode_body
-          raise 'id must be an Integer' unless id.is_a?(Integer)
+          raise "id must be an Integer" unless id.is_a?(Integer)
 
-          [id].pack('n')
+          [id].pack("n")
         end
 
         def parse_body(buffer)
-          self.id, _ignore = buffer.unpack('n')
+          self.id, _ignore = buffer.unpack("n")
         end
       end
 
@@ -459,13 +459,13 @@ module MQTT
         }.freeze
 
         def encode_body
-          raise 'id must be an Integer' unless id.is_a?(Integer)
+          raise "id must be an Integer" unless id.is_a?(Integer)
 
-          [id].pack('n')
+          [id].pack("n")
         end
 
         def parse_body(buffer)
-          self.id, _ignore = buffer.unpack('n')
+          self.id, _ignore = buffer.unpack("n")
         end
       end
 
@@ -477,13 +477,13 @@ module MQTT
         }.freeze
 
         def encode_body
-          raise 'id must be an Integer' unless id.is_a?(Integer)
+          raise "id must be an Integer" unless id.is_a?(Integer)
 
-          [id].pack('n')
+          [id].pack("n")
         end
 
         def parse_body(buffer)
-          self.id, _ignore = buffer.unpack('n')
+          self.id, _ignore = buffer.unpack("n")
         end
       end
 
@@ -498,13 +498,13 @@ module MQTT
         }.freeze
 
         def encode_body
-          raise 'id must be an Integer' unless id.is_a?(Integer)
+          raise "id must be an Integer" unless id.is_a?(Integer)
 
-          [encode_flags, id, encode_topic].pack('Cna*')
+          [encode_flags, id, encode_topic].pack("Cna*")
         end
 
         def parse_body(buffer)
-          flags, self.id, topic = buffer.unpack('Cna*')
+          flags, self.id, topic = buffer.unpack("Cna*")
           parse_flags(flags)
           parse_topic(topic)
         end
@@ -523,13 +523,13 @@ module MQTT
         }.freeze
 
         def encode_body
-          raise 'id must be an Integer' unless id.is_a?(Integer)
+          raise "id must be an Integer" unless id.is_a?(Integer)
 
-          [encode_flags, encode_topic_id, id, return_code].pack('CnnC')
+          [encode_flags, encode_topic_id, id, return_code].pack("CnnC")
         end
 
         def parse_body(buffer)
-          flags, topic_id, self.id, self.return_code = buffer.unpack('CnnC')
+          flags, topic_id, self.id, self.return_code = buffer.unpack("CnnC")
           parse_flags(flags)
           parse_topic_id(topic_id)
         end
@@ -546,13 +546,13 @@ module MQTT
         }.freeze
 
         def encode_body
-          raise 'id must be an Integer' unless id.is_a?(Integer)
+          raise "id must be an Integer" unless id.is_a?(Integer)
 
-          [encode_flags, id, encode_topic].pack('Cna*')
+          [encode_flags, id, encode_topic].pack("Cna*")
         end
 
         def parse_body(buffer)
-          flags, self.id, topic = buffer.unpack('Cna*')
+          flags, self.id, topic = buffer.unpack("Cna*")
           parse_flags(flags)
           parse_topic(topic)
         end
@@ -566,13 +566,13 @@ module MQTT
         }.freeze
 
         def encode_body
-          raise 'id must be an Integer' unless id.is_a?(Integer)
+          raise "id must be an Integer" unless id.is_a?(Integer)
 
-          [id].pack('n')
+          [id].pack("n")
         end
 
         def parse_body(buffer)
-          self.id = buffer.unpack1('n')
+          self.id = buffer.unpack1("n")
         end
       end
 
@@ -593,14 +593,14 @@ module MQTT
 
         def encode_body
           if duration.nil? || duration.zero?
-            ''
+            ""
           else
-            [duration].pack('n')
+            [duration].pack("n")
           end
         end
 
         def parse_body(buffer)
-          self.duration = buffer.length == 2 ? buffer.unpack1('n') : nil
+          self.duration = (buffer.length == 2) ? buffer.unpack1("n") : nil
         end
       end
 
@@ -615,15 +615,15 @@ module MQTT
 
         def encode_body
           if topic_name.nil? || topic_name.empty?
-            ''
+            ""
           else
-            [encode_flags, topic_name].pack('Ca*')
+            [encode_flags, topic_name].pack("Ca*")
           end
         end
 
         def parse_body(buffer)
           if buffer.length > 1
-            flags, self.topic_name = buffer.unpack('Ca*')
+            flags, self.topic_name = buffer.unpack("Ca*")
             parse_flags(flags)
           else
             self.topic_name = nil
@@ -639,13 +639,13 @@ module MQTT
         }.freeze
 
         def encode_body
-          raise 'return_code must be an Integer' unless return_code.is_a?(Integer)
+          raise "return_code must be an Integer" unless return_code.is_a?(Integer)
 
-          [return_code].pack('C')
+          [return_code].pack("C")
         end
 
         def parse_body(buffer)
-          self.return_code, _ignore = buffer.unpack('C')
+          self.return_code, _ignore = buffer.unpack("C")
         end
       end
 
@@ -669,13 +669,13 @@ module MQTT
         }.freeze
 
         def encode_body
-          raise 'return_code must be an Integer' unless return_code.is_a?(Integer)
+          raise "return_code must be an Integer" unless return_code.is_a?(Integer)
 
-          [return_code].pack('C')
+          [return_code].pack("C")
         end
 
         def parse_body(buffer)
-          self.return_code, _ignore = buffer.unpack('C')
+          self.return_code, _ignore = buffer.unpack("C")
         end
       end
     end

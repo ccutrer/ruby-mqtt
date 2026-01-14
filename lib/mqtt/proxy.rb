@@ -40,7 +40,7 @@ module MQTT
     #
     # NOTE: be careful not to connect to yourself!
     def initialize(args = {})
-      @local_host = args[:local_host] || '0.0.0.0'
+      @local_host = args[:local_host] || "0.0.0.0"
       @local_port = args[:local_port] || MQTT::DEFAULT_PORT
       @server_host = args[:server_host]
       @server_port = args[:server_port] || 18_830
@@ -67,14 +67,14 @@ module MQTT
       loop do
         # Wait for a client to connect and then create a thread for it
         Thread.new(@server.accept) do |client_socket|
-          logger.info "Accepted client: #{client_socket.peeraddr.join(':')}"
+          logger.info "Accepted client: #{client_socket.peeraddr.join(":")}"
           server_socket = TCPSocket.new(@server_host, @server_port)
           begin
             process_packets(client_socket, server_socket)
           rescue => e
             logger.error e.to_s
           end
-          logger.info "Disconnected: #{client_socket.peeraddr.join(':')}"
+          logger.info "Disconnected: #{client_socket.peeraddr.join(":")}"
           server_socket.close
           client_socket.close
         end
@@ -89,7 +89,7 @@ module MQTT
         selected = IO.select([client_socket, server_socket], nil, nil, @select_timeout)
 
         # Timeout
-        raise 'Timeout in select' if selected.nil?
+        raise "Timeout in select" if selected.nil?
 
         # Iterate through each of the sockets with data to read
         if selected[0].include?(client_socket)
@@ -109,7 +109,7 @@ module MQTT
             logger.debug "<#{packet.type_name}> -> client"
           end
         else
-          logger.error 'Problem with select: socket is neither server or client'
+          logger.error "Problem with select: socket is neither server or client"
         end
       end
     end

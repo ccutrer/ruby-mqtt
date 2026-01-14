@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require 'simplecov'
+require "simplecov"
 
 SimpleCov.start do
-  add_filter '/spec/'
+  add_filter "/spec/"
 end
 
 def fixture_path(name)
-  File.join(File.dirname(__FILE__), 'fixtures', name.to_s)
+  File.join(File.dirname(__FILE__), "fixtures", name.to_s)
 end
