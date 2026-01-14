@@ -628,7 +628,7 @@ describe MQTT::Client do
 
     it "respects connect_timeout" do
       client = MQTT::Client.new(host: "198.51.100.1", connect_timeout: 0.1)
-      expect { client.connect }.to raise_error(IO::TimeoutError)
+      expect { client.connect }.to raise_error(defined?(IO::TimeoutError) ? IO::TimeoutError : Errno::ETIMEDOUT)
     end
 
     it "respects timeouts" do
