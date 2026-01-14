@@ -7,7 +7,7 @@ Gem::Specification.new do |gem|
   gem.version       = MQTT::VERSION
   gem.author        = "Cody Cutrer"
   gem.email         = "cody@cutrer.us"
-  gem.homepage      = "http://github.com/ccutrer/ruby-mqtt"
+  gem.homepage      = "https://github.com/ccutrer/ruby-mqtt"
   gem.summary       = "Implementation of the MQTT protocol"
   gem.description   = <<~TEXT
     Pure Ruby gem that implements the MQTT protocol, a lightweight protocol for
