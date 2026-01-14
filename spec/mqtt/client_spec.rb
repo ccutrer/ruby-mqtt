@@ -868,6 +868,12 @@ describe MQTT::Client do
       client.send(:receive_packet)
     end
 
+    it "closes the socket if there is a system call error" do
+      expect(socket).to receive(:close).once
+      allow(MQTT::Packet).to receive(:read).and_raise(Errno::ECONNRESET)
+      client.send(:receive_packet)
+    end
+
     it "passes exceptions up to parent thread" do
       client.reconnect_limit = 0
       allow(MQTT::Packet).to receive(:read).and_raise(MQTT::Exception)
