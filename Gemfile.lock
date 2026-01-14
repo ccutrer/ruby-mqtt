@@ -1,7 +1,8 @@
 PATH
   remote: .
   specs:
-    mqtt-ccutrer (1.0.2)
+    mqtt-ccutrer (1.0.3)
+      logger (~> 1.7)
 
 GEM
   remote: https://rubygems.org/
@@ -10,6 +11,7 @@ GEM
     byebug (11.1.3)
     diff-lcs (1.4.4)
     docile (1.3.5)
+    logger (1.7.0)
     parallel (1.20.1)
     parser (3.0.0.0)
       ast (~> 2.4.1)
@@ -72,4 +74,4 @@ DEPENDENCIES
   yard (>= 0.9.11)
 
 BUNDLED WITH
-   2.2.26
+  4.0.3

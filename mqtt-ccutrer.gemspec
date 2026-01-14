@@ -21,6 +21,8 @@ Gem::Specification.new do |gem|
 
   gem.required_ruby_version = '>= 2.5'
 
+  gem.add_dependency 'logger', '~> 1.7'
+
   gem.add_development_dependency 'bundler',       '>= 1.11.2'
   gem.add_development_dependency 'byebug',        '~> 11.1'
   gem.add_development_dependency 'rake',          '>= 10.2.2'
